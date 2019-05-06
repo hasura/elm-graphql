@@ -15,10 +15,14 @@ hosted on GitHub pages and the Postgres+GraphQL Engine is running on Postgres.
 - Get the Heroku app URL (say `todo-mvc-elm-backend1.herokuapp.com`)
 - Clone this repo:
   ```bash
-  git clone git@github.com:karthikvt26/elm-graphql.git
+  git clone git@github.com:hasura/elm-graphql.git
 
 
-  cd elm-graphql/examples/src/realtime-todo-elm-graphql/elm-app
+  cd elm-app
+
+  npm i
+
+
   ```
 - [Install Hasura CLI](https://docs.hasura.io/1.0/graphql/manual/hasura-cli/install-hasura-cli.html)
 - Goto `hasura/` and edit `config.yaml`:
@@ -36,5 +40,7 @@ hosted on GitHub pages and the Postgres+GraphQL Engine is running on Postgres.
   ```
 - Run the app (go to the root of the repo):
   ```bash
+  npm i
+  npm run generate-graph-types
   npm start
   ```
