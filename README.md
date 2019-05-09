@@ -1,9 +1,8 @@
 # realtime-todo-elm-graphql
 
-A demo to showcase real-time capabilities of GraphQL using graphql-elm and apollo-client
+This is a demo to showcase real-time capabilities of GraphQL using [elm-graphql](https://github.com/dillonkearns/elm-graphql) and [apollo-client](https://github.com/apollographql/apollo-client) on the frontend and using the [Hasura](github.com/hasura/graphql-engine). The application makes use of Hasura GraphQL Engine's real-time capabilities using GraphQL subscriptions. 
 
-The application makes use of Hasura GraphQL Engine's real-time capabilities
-using `subscription`. There is no backend code involved. Try out the running app here: https://elm-todo-hasura.now.sh/
+Try out the running app here: https://elm-todo-hasura.now.sh/.
 
 # Running the app yourself
 
