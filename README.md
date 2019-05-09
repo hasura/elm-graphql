@@ -3,8 +3,7 @@
 A demo to showcase real-time capabilities of GraphQL using graphql-elm and apollo-client
 
 The application makes use of Hasura GraphQL Engine's real-time capabilities
-using `subscription`. There is no backend code involved. The application is
-hosted on GitHub pages and the Postgres+GraphQL Engine is running on Postgres.
+using `subscription`. There is no backend code involved. Try out the running app here: https://elm-todo-hasura.now.sh/
 
 # Running the app yourself
 
