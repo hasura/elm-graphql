@@ -11,9 +11,34 @@ import Graphql.Http
 import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
 import Graphql.OptionalArgument as OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, hardcoded)
-import Hasura.Enum.Order_by
+import Hasura.Enum.Order_by exposing (Order_by(..))
 import Hasura.InputObject
+    exposing
+        ( Boolean_comparison_exp
+        , Integer_comparison_exp
+        , Todolist_bool_exp
+        , Todolist_insert_input
+        , Todolist_set_input
+        , Users_set_input
+        , buildBoolean_comparison_exp
+        , buildInteger_comparison_exp
+        , buildTodolist_bool_exp
+        , buildTodolist_insert_input
+        , buildTodolist_order_by
+        , buildTodolist_set_input
+        , buildUsers_bool_exp
+        , buildUsers_set_input
+        )
 import Hasura.Mutation as Mutation
+    exposing
+        ( DeleteTodolistRequiredArguments
+        , InsertTodolistRequiredArguments
+        , UpdateTodolistOptionalArguments
+        , UpdateTodolistRequiredArguments
+        , UpdateUsersOptionalArguments
+        , UpdateUsersRequiredArguments
+        , insert_todolist
+        )
 import Hasura.Object
 import Hasura.Object.Online_users as OnlineUser
 import Hasura.Object.Todolist as Todolist
@@ -22,7 +47,7 @@ import Hasura.Object.Users as Users
 import Hasura.Object.Users_mutation_response as UsersMutation
 import Hasura.Query as Query
 import Hasura.Scalar as Timestamptz exposing (Timestamptz(..))
-import Hasura.Subscription as Subscription
+import Hasura.Subscription as Subscription exposing (TodolistOptionalArguments)
 import Html exposing (Html, a, button, div, form, h1, i, img, input, label, li, nav, p, span, text, ul)
 import Html.Attributes
     exposing
@@ -287,7 +312,7 @@ type DisplayForm
 
 iAT : String
 iAT =
-    ""
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6ImthcnRoaWt2dDI2IiwiaWF0IjoxNTU4NDM4ODI1Ljc1MiwiaHR0cHM6Ly9oYXN1cmEuaW8vand0L2NsYWltcyI6eyJ4LWhhc3VyYS1hbGxvd2VkLXJvbGVzIjpbIm1pbmUiLCJ1c2VyIl0sIngtaGFzdXJhLXVzZXItaWQiOiIxIiwieC1oYXN1cmEtZGVmYXVsdC1yb2xlIjoidXNlciIsIngtaGFzdXJhLXJvbGUiOiJ1c2VyIn19.cMWDnvYKUn9XVDhI1cSb5Arb5ch8XfuCvLPClTk-xbg"
 
 
 initialize : Model
@@ -327,56 +352,29 @@ init =
 -}
 
 
-optionalParameter : Subscription.TodolistOptionalArguments -> Subscription.TodolistOptionalArguments
-optionalParameter _ =
-    Subscription.TodolistOptionalArguments
-        OptionalArgument.Absent
-        OptionalArgument.Absent
-        OptionalArgument.Absent
-        (OptionalArgument.Present
-            [ Hasura.InputObject.Todolist_order_by
-                (OptionalArgument.Present Hasura.Enum.Order_by.Desc)
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-            ]
-        )
-        (OptionalArgument.Present
-            (Hasura.InputObject.Todolist_bool_exp
-                (Hasura.InputObject.Todolist_bool_expRaw
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    (OptionalArgument.Present
-                        (Hasura.InputObject.Boolean_comparison_exp
-                            (OptionalArgument.Present False)
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                        )
-                    )
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                )
-            )
-        )
+orderByCreatedAt : Order_by -> OptionalArgument (List Hasura.InputObject.Todolist_order_by)
+orderByCreatedAt order =
+    Present <| [ buildTodolist_order_by (\args -> { args | created_at = OptionalArgument.Present order }) ]
+
+
+equalToBoolean : Bool -> OptionalArgument Hasura.InputObject.Boolean_comparison_exp
+equalToBoolean isPublic =
+    Present <| buildBoolean_comparison_exp (\args -> { args | eq_ = OptionalArgument.Present isPublic })
+
+
+whereIsPublic : Bool -> OptionalArgument Hasura.InputObject.Todolist_bool_exp
+whereIsPublic isPublic =
+    Present <| buildTodolist_bool_exp (\args -> { args | is_public = equalToBoolean isPublic })
+
+
+todoListSubscriptionOptionalArgument : TodolistOptionalArguments -> TodolistOptionalArguments
+todoListSubscriptionOptionalArgument optionalArgs =
+    { optionalArgs | where_ = whereIsPublic False, order_by = orderByCreatedAt Desc }
 
 
 subscriptionDocument : SelectionSet Tasks RootSubscription
 subscriptionDocument =
-    Subscription.todolist optionalParameter todoListSelection
+    Subscription.todolist todoListSubscriptionOptionalArgument todoListSelection
 
 
 
@@ -406,56 +404,14 @@ onlineUsersSelection =
 -}
 
 
-publicListParams : Subscription.TodolistOptionalArguments -> Subscription.TodolistOptionalArguments
-publicListParams _ =
-    Subscription.TodolistOptionalArguments
-        OptionalArgument.Absent
-        (OptionalArgument.Present 1)
-        OptionalArgument.Absent
-        (OptionalArgument.Present
-            [ Hasura.InputObject.Todolist_order_by
-                (OptionalArgument.Present Hasura.Enum.Order_by.Desc)
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-            ]
-        )
-        (OptionalArgument.Present
-            (Hasura.InputObject.Todolist_bool_exp
-                (Hasura.InputObject.Todolist_bool_expRaw
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    (OptionalArgument.Present
-                        (Hasura.InputObject.Boolean_comparison_exp
-                            (OptionalArgument.Present True)
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                        )
-                    )
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                )
-            )
-        )
+publicTodoListSubscriptionOptionalArgument : TodolistOptionalArguments -> TodolistOptionalArguments
+publicTodoListSubscriptionOptionalArgument optionalArgs =
+    { optionalArgs | where_ = whereIsPublic True, order_by = orderByCreatedAt Desc }
 
 
 publicListSubscription : SelectionSet Tasks RootSubscription
 publicListSubscription =
-    Subscription.todolist publicListParams todoListSelection
+    Subscription.todolist publicTodoListSubscriptionOptionalArgument todoListSelection
 
 
 todoListSelection : SelectionSet Task Hasura.Object.Todolist
@@ -469,72 +425,71 @@ todoListSelection =
 
 
 {-
-   Fetch list of todos < last received id
+   Reload public todos definition
 -}
 
 
-fetchTodosArgs : Int -> Subscription.TodolistOptionalArguments -> Subscription.TodolistOptionalArguments
-fetchTodosArgs id _ =
-    Subscription.TodolistOptionalArguments
-        OptionalArgument.Absent
-        (OptionalArgument.Present 7)
-        OptionalArgument.Absent
-        (OptionalArgument.Present
-            [ Hasura.InputObject.Todolist_order_by
-                (OptionalArgument.Present Hasura.Enum.Order_by.Desc)
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-            ]
-        )
-        (OptionalArgument.Present
-            (Hasura.InputObject.Todolist_bool_exp
-                (Hasura.InputObject.Todolist_bool_expRaw
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    (OptionalArgument.Present
-                        (Hasura.InputObject.Integer_comparison_exp
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            (OptionalArgument.Present id)
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                        )
-                    )
-                    OptionalArgument.Absent
-                    (OptionalArgument.Present
-                        (Hasura.InputObject.Boolean_comparison_exp
-                            (OptionalArgument.Present True)
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                        )
-                    )
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                )
+publicTodoListQueryLimit : Int -> OptionalArgument Int
+publicTodoListQueryLimit limit =
+    Present limit
+
+
+lteLastTodoId : Int -> OptionalArgument Integer_comparison_exp
+lteLastTodoId id =
+    Present
+        (buildInteger_comparison_exp
+            (\args ->
+                { args
+                    | lte_ = Present id
+                }
             )
         )
 
 
-query : Int -> SelectionSet TasksWUser RootQuery
-query id =
-    Query.todolist (fetchTodosArgs id) todoListSelectionWithUser
+publicTodoListOffsetWhere : Int -> OptionalArgument Todolist_bool_exp
+publicTodoListOffsetWhere id =
+    Present
+        (buildTodolist_bool_exp
+            (\args ->
+                { args
+                    | id = lteLastTodoId id
+                    , is_public = equalToBoolean True
+                }
+            )
+        )
+
+
+
+{-
+   Generates argument as below
+   ```
+    limit: <value>,
+    order_by : [
+      {
+        created_at: desc
+      }
+    ],
+     where_ : {
+       id: {
+         _lte: <id>
+       },
+       is_public: {
+         _eq: True
+       }
+     }
+   ```
+-}
+
+
+publicTodoListQueryOptionalArgs : Int -> Int -> TodolistOptionalArguments -> TodolistOptionalArguments
+publicTodoListQueryOptionalArgs id limit optionalArgs =
+    { optionalArgs | where_ = publicTodoListOffsetWhere id, order_by = orderByCreatedAt Desc, limit = publicTodoListQueryLimit limit }
+
+
+selectUser : SelectionSet User Hasura.Object.Users
+selectUser =
+    SelectionSet.map User
+        Users.username
 
 
 todoListSelectionWithUser : SelectionSet TaskWUser Hasura.Object.Todolist
@@ -547,10 +502,15 @@ todoListSelectionWithUser =
         (Todolist.user selectUser)
 
 
-selectUser : SelectionSet User Hasura.Object.Users
-selectUser =
-    SelectionSet.map User
-        Users.username
+loadPublicTodoList : Int -> SelectionSet TasksWUser RootQuery
+loadPublicTodoList id =
+    Query.todolist (publicTodoListQueryOptionalArgs id 7) todoListSelectionWithUser
+
+
+
+{-
+   End of reload public todos definition
+-}
 
 
 getAuthHeader : String -> (Graphql.Http.Request decodesTo -> Graphql.Http.Request decodesTo)
@@ -575,72 +535,64 @@ makeRequest q authToken =
 -}
 
 
-fetchNewTodosArgs : Int -> Subscription.TodolistOptionalArguments -> Subscription.TodolistOptionalArguments
-fetchNewTodosArgs id _ =
-    Subscription.TodolistOptionalArguments
-        OptionalArgument.Absent
-        OptionalArgument.Absent
-        OptionalArgument.Absent
-        (OptionalArgument.Present
-            [ Hasura.InputObject.Todolist_order_by
-                (OptionalArgument.Present Hasura.Enum.Order_by.Desc)
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-            ]
-        )
-        (OptionalArgument.Present
-            (Hasura.InputObject.Todolist_bool_exp
-                (Hasura.InputObject.Todolist_bool_expRaw
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    (OptionalArgument.Present
-                        (Hasura.InputObject.Integer_comparison_exp
-                            OptionalArgument.Absent
-                            (OptionalArgument.Present id)
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                        )
-                    )
-                    OptionalArgument.Absent
-                    (OptionalArgument.Present
-                        (Hasura.InputObject.Boolean_comparison_exp
-                            (OptionalArgument.Present True)
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                            OptionalArgument.Absent
-                        )
-                    )
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                    OptionalArgument.Absent
-                )
+gtLastTodoId : Int -> OptionalArgument Integer_comparison_exp
+gtLastTodoId id =
+    Present
+        (buildInteger_comparison_exp
+            (\args ->
+                { args
+                    | gt_ = Present id
+                }
             )
         )
 
 
+newPublicTodosWhere : Int -> OptionalArgument Todolist_bool_exp
+newPublicTodosWhere id =
+    Present
+        (buildTodolist_bool_exp
+            (\args ->
+                { args
+                    | id = gtLastTodoId id
+                    , is_public = equalToBoolean True
+                }
+            )
+        )
+
+
+
+{-
+   Generates argument as below
+   ```
+    order_by : [
+      {
+        created_at: desc
+      }
+    ],
+     where_ : {
+       id: {
+         _gt: <id>
+       },
+       is_public: {
+         _eq: True
+       }
+     }
+   ```
+-}
+
+
+newPublicTodoListQueryOptionalArgs : Int -> TodolistOptionalArguments -> TodolistOptionalArguments
+newPublicTodoListQueryOptionalArgs id optionalArgs =
+    { optionalArgs | where_ = newPublicTodosWhere id, order_by = orderByCreatedAt Desc }
+
+
 newTodoQuery : Int -> SelectionSet TasksWUser RootQuery
 newTodoQuery id =
-    Query.todolist (fetchNewTodosArgs id) todoListSelectionWithUser
+    Query.todolist (newPublicTodoListQueryOptionalArgs id) todoListSelectionWithUser
 
 
-makeNewTodoRequest : SelectionSet TasksWUser RootQuery -> String -> Cmd Msg
-makeNewTodoRequest q authToken =
+loadNewTodos : SelectionSet TasksWUser RootQuery -> String -> Cmd Msg
+loadNewTodos q authToken =
     q
         |> Graphql.Http.queryRequest graphql_url
         |> getAuthHeader authToken
@@ -649,27 +601,28 @@ makeNewTodoRequest q authToken =
 
 
 {-
-   Forming mutation object
+   Insert into todolist table
 -}
 
 
-getMutationObj : Model -> SelectionSet (Maybe MutationResponse) RootMutation
-getMutationObj model =
-    Mutation.insert_todolist identity (insertArgs model) mutationResponseSelection
+insertTodoObjects : String -> Todolist_insert_input
+insertTodoObjects newTask =
+    buildTodolist_insert_input
+        (\args ->
+            { args
+                | task = Present newTask
+            }
+        )
 
 
-insertArgs : Model -> Mutation.InsertTodolistRequiredArguments
-insertArgs model =
-    Mutation.InsertTodolistRequiredArguments
-        [ Hasura.InputObject.Todolist_insert_input
-            OptionalArgument.Absent
-            OptionalArgument.Absent
-            OptionalArgument.Absent
-            OptionalArgument.Absent
-            (OptionalArgument.Present model.newTask)
-            OptionalArgument.Absent
-            OptionalArgument.Absent
-        ]
+insertArgs : String -> InsertTodolistRequiredArguments
+insertArgs newTask =
+    InsertTodolistRequiredArguments [ insertTodoObjects newTask ]
+
+
+getTodoListInsertObject : String -> SelectionSet (Maybe MutationResponse) RootMutation
+getTodoListInsertObject newTask =
+    insert_todolist identity (insertArgs newTask) mutationResponseSelection
 
 
 mutationResponseSelection : SelectionSet MutationResponse Hasura.Object.Todolist_mutation_response
@@ -688,27 +641,29 @@ makeMutation mutation authToken =
 
 
 {-
-   Mutate Public Todo LIst
+   Insert into public todolist
 -}
 
 
-getPublicMutateObj : Model -> SelectionSet (Maybe MutationResponse) RootMutation
-getPublicMutateObj model =
-    Mutation.insert_todolist identity (publicTodoMutateArgs model) publicTodoMutateResponseSelection
+getPublicTodoInsertObj : String -> SelectionSet (Maybe MutationResponse) RootMutation
+getPublicTodoInsertObj newPublicTask =
+    Mutation.insert_todolist identity (insertPublicTodoArgs newPublicTask) publicTodoMutateResponseSelection
 
 
-publicTodoMutateArgs : Model -> Mutation.InsertTodolistRequiredArguments
-publicTodoMutateArgs model =
-    Mutation.InsertTodolistRequiredArguments
-        [ Hasura.InputObject.Todolist_insert_input
-            OptionalArgument.Absent
-            OptionalArgument.Absent
-            OptionalArgument.Absent
-            (OptionalArgument.Present True)
-            (OptionalArgument.Present model.publicTodoInsert)
-            OptionalArgument.Absent
-            OptionalArgument.Absent
-        ]
+insertPublicTodoObjects : String -> Todolist_insert_input
+insertPublicTodoObjects newPublicTask =
+    buildTodolist_insert_input
+        (\args ->
+            { args
+                | task = Present newPublicTask
+                , is_public = Present True
+            }
+        )
+
+
+insertPublicTodoArgs : String -> InsertTodolistRequiredArguments
+insertPublicTodoArgs newPublicTask =
+    InsertTodolistRequiredArguments [ insertPublicTodoObjects newPublicTask ]
 
 
 publicTodoMutateResponseSelection : SelectionSet MutationResponse Hasura.Object.Todolist_mutation_response
@@ -737,51 +692,38 @@ makePublicMutation mutation authToken =
 -}
 
 
-updateUserLastSeen : String -> SelectionSet (Maybe MutationResponse) RootMutation
-updateUserLastSeen currTime =
-    Mutation.update_users (setUpdateUserArgs currTime) setUserLastSeenUpdateArgs selectionUpdateUserLastSeen
-
-
-setUpdateUserArgs : String -> Mutation.UpdateUsersOptionalArguments -> Mutation.UpdateUsersOptionalArguments
-setUpdateUserArgs val _ =
-    Mutation.UpdateUsersOptionalArguments
-        OptionalArgument.Absent
-        (OptionalArgument.Present
-            (Hasura.InputObject.Users_set_input
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                (OptionalArgument.Present
-                    (Timestamptz val)
-                )
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-            )
+updateUserSetArg : String -> Users_set_input
+updateUserSetArg timestamp =
+    buildUsers_set_input
+        (\args ->
+            { args
+                | last_seen = Present (Timestamptz timestamp)
+            }
         )
 
 
-setUserLastSeenUpdateArgs : Mutation.UpdateUsersRequiredArguments
-setUserLastSeenUpdateArgs =
-    Mutation.UpdateUsersRequiredArguments
-        (Hasura.InputObject.Users_bool_exp
-            (Hasura.InputObject.Users_bool_expRaw
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-            )
-        )
+updateLastSeenArgs : String -> UpdateUsersOptionalArguments -> UpdateUsersOptionalArguments
+updateLastSeenArgs timestamp optionalArgs =
+    { optionalArgs
+        | set_ = Present (updateUserSetArg timestamp)
+    }
+
+
+updateLastSeenWhere : UpdateUsersRequiredArguments
+updateLastSeenWhere =
+    UpdateUsersRequiredArguments
+        (buildUsers_bool_exp (\args -> args))
 
 
 selectionUpdateUserLastSeen : SelectionSet MutationResponse Hasura.Object.Users_mutation_response
 selectionUpdateUserLastSeen =
     SelectionSet.map MutationResponse
         UsersMutation.affected_rows
+
+
+updateUserLastSeen : String -> SelectionSet (Maybe MutationResponse) RootMutation
+updateUserLastSeen currTime =
+    Mutation.update_users (updateLastSeenArgs currTime) updateLastSeenWhere selectionUpdateUserLastSeen
 
 
 updateLastSeen : String -> SelectionSet (Maybe MutationResponse) RootMutation -> Cmd Msg
@@ -798,62 +740,48 @@ updateLastSeen authToken updateQuery =
 -}
 
 
-updateTask : Int -> Bool -> SelectionSet (Maybe MutationResponse) RootMutation
-updateTask id val =
-    Mutation.update_todolist (setArgs val) (updateArgs id) mutationResponseSelection
+updateTaskStatus : Int -> Bool -> SelectionSet (Maybe MutationResponse) RootMutation
+updateTaskStatus todoId status =
+    Mutation.update_todolist (setTodoListUpdateArgs status) (setTodoListUpdateWhere todoId) mutationResponseSelection
 
 
-setArgs : Bool -> Mutation.UpdateTodolistOptionalArguments -> Mutation.UpdateTodolistOptionalArguments
-setArgs val _ =
-    Mutation.UpdateTodolistOptionalArguments
-        OptionalArgument.Absent
-        (OptionalArgument.Present
-            (Hasura.InputObject.Todolist_set_input
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                (OptionalArgument.Present val)
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-            )
+setTodoListSetArg : Bool -> Todolist_set_input
+setTodoListSetArg status =
+    buildTodolist_set_input
+        (\args ->
+            { args
+                | is_completed = OptionalArgument.Present status
+            }
         )
 
 
-updateArgs : Int -> Mutation.UpdateTodolistRequiredArguments
-updateArgs id =
-    Mutation.UpdateTodolistRequiredArguments
-        (Hasura.InputObject.Todolist_bool_exp
-            (Hasura.InputObject.Todolist_bool_expRaw
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                (OptionalArgument.Present
-                    (Hasura.InputObject.Integer_comparison_exp
-                        (OptionalArgument.Present id)
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                    )
-                )
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-            )
+setTodoListUpdateArgs : Bool -> UpdateTodolistOptionalArguments -> UpdateTodolistOptionalArguments
+setTodoListUpdateArgs status optionalArgs =
+    { optionalArgs
+        | set_ = Present (setTodoListSetArg status)
+    }
+
+
+setTodoListValueForId : Int -> Integer_comparison_exp
+setTodoListValueForId todoId =
+    buildInteger_comparison_exp
+        (\args ->
+            { args
+                | eq_ = Present todoId
+            }
         )
 
 
-updateResponseSelection : SelectionSet MutationResponse Hasura.Object.Todolist_mutation_response
-updateResponseSelection =
-    SelectionSet.map MutationResponse
-        TodolistMutation.affected_rows
+setTodoListUpdateWhere : Int -> UpdateTodolistRequiredArguments
+setTodoListUpdateWhere todoId =
+    UpdateTodolistRequiredArguments
+        (buildTodolist_bool_exp
+            (\args ->
+                { args
+                    | id = Present (setTodoListValueForId todoId)
+                }
+            )
+        )
 
 
 updateTodoList : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
@@ -872,37 +800,18 @@ updateTodoList mutation authToken =
 
 
 deleteSingleTask : Int -> SelectionSet (Maybe MutationResponse) RootMutation
-deleteSingleTask id =
-    Mutation.delete_todolist (delArgs id) mutationResponseSelection
+deleteSingleTask todoId =
+    Mutation.delete_todolist (setTodoListDeleteWhere todoId) mutationResponseSelection
 
 
-delArgs : Int -> Mutation.DeleteTodolistRequiredArguments
-delArgs id =
-    Mutation.DeleteTodolistRequiredArguments
-        (Hasura.InputObject.Todolist_bool_exp
-            (Hasura.InputObject.Todolist_bool_expRaw
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                (OptionalArgument.Present
-                    (Hasura.InputObject.Integer_comparison_exp
-                        (OptionalArgument.Present id)
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                    )
-                )
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
+setTodoListDeleteWhere : Int -> DeleteTodolistRequiredArguments
+setTodoListDeleteWhere todoId =
+    DeleteTodolistRequiredArguments
+        (buildTodolist_bool_exp
+            (\args ->
+                { args
+                    | id = Present (setTodoListValueForId todoId)
+                }
             )
         )
 
@@ -931,49 +840,28 @@ deleteSingleTodoItem mutation authToken =
 
 
 deleteAllCompletedTask : Int -> SelectionSet (Maybe MutationResponse) RootMutation
-deleteAllCompletedTask id =
-    Mutation.delete_todolist (delAllArgs id) mutationResponseSelection
+deleteAllCompletedTask _ =
+    Mutation.delete_todolist (setTodoListDeleteAllCompletedWhere True) mutationResponseSelection
 
 
-delAllArgs : Int -> Mutation.DeleteTodolistRequiredArguments
-delAllArgs id =
-    Mutation.DeleteTodolistRequiredArguments
-        (Hasura.InputObject.Todolist_bool_exp
-            (Hasura.InputObject.Todolist_bool_expRaw
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                (OptionalArgument.Present
-                    (Hasura.InputObject.Boolean_comparison_exp
-                        (OptionalArgument.Present True)
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                    )
-                )
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                OptionalArgument.Absent
-                (OptionalArgument.Present
-                    (Hasura.InputObject.Integer_comparison_exp
-                        (OptionalArgument.Present id)
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                        OptionalArgument.Absent
-                    )
-                )
+setTodoListValueForTodoStatus : Bool -> Boolean_comparison_exp
+setTodoListValueForTodoStatus status =
+    buildBoolean_comparison_exp
+        (\args ->
+            { args
+                | eq_ = Present status
+            }
+        )
+
+
+setTodoListDeleteAllCompletedWhere : Bool -> DeleteTodolistRequiredArguments
+setTodoListDeleteAllCompletedWhere status =
+    DeleteTodolistRequiredArguments
+        (buildTodolist_bool_exp
+            (\args ->
+                { args
+                    | is_completed = Present (setTodoListValueForTodoStatus status)
+                }
             )
         )
 
@@ -1184,7 +1072,7 @@ update msg model =
                                         0 ->
                                             let
                                                 queryObj =
-                                                    query recDat.id
+                                                    loadPublicTodoList recDat.id
                                             in
                                             updatePublicTodoData (\publicTodoInfo -> { publicTodoInfo | currentLastTodoId = recDat.id }) model (makeRequest queryObj model.authData.authToken)
 
@@ -1295,14 +1183,14 @@ update msg model =
         RunMutateTask ->
             let
                 mutationObj =
-                    getMutationObj model
+                    getTodoListInsertObject model.newTask
             in
             ( { model | mutateTask = RemoteData.Loading }, makeMutation mutationObj model.authData.authToken )
 
         RunMutatePublicTask ->
             let
                 mutationObj =
-                    getPublicMutateObj model
+                    getPublicTodoInsertObj model.publicTodoInsert
             in
             ( { model | publicTodoInsert = "" }, makePublicMutation mutationObj model.authData.authToken )
 
@@ -1311,12 +1199,12 @@ update msg model =
                 newQuery =
                     newTodoQuery model.publicTodoInfo.currentLastTodoId
             in
-            ( model, makeNewTodoRequest newQuery model.authData.authToken )
+            ( model, loadNewTodos newQuery model.authData.authToken )
 
         MarkCompleted id completed ->
             let
                 updateObj =
-                    updateTask id (not completed)
+                    updateTaskStatus id (not completed)
             in
             ( model, updateTodoList updateObj model.authData.authToken )
 
