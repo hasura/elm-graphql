@@ -42,3 +42,15 @@ Try out the running app here: https://elm-todo-hasura.now.sh/.
   npm run generate-graph-types
   npm start
   ```
+
+# Deploy to now
+
+- Build
+  ```
+    npm run build
+  ```
+
+- Deploy only the build folder
+  ```
+    now ./build
+  ```
