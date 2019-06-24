@@ -64,32 +64,12 @@ document.addEventListener("DOMContentLoaded", function() {
   var app = Elm.Main.init({
     node: document.getElementById("root")
   });
-  app.ports.createSubscriptionToTasks.subscribe(function(data) {
-    /* Initiate subscription request */
-    var [ data, authToken ] = data;
-    if (authToken.length > 0) {
-      app.ports.creatingSubscriptionToTasks.send(1);
-      getClient(authToken).subscribe({
-        query: gql`${data}`,
-        variables: {}
-      }).subscribe({
-        next(resp) {
-          app.ports.gotTodoListData.send(resp);
-        },
-        error(err) {
-          console.log('error is');
-          console.log(err);
-          app.ports.gotTodoListData.send(err);
-        }
-      });
-    }
-  });
 
   app.ports.createSubscriptionToPublicTodos.subscribe(function(data) {
     /* Initiate subscription request */
     var [ data, authToken ] = data;
     if (authToken.length > 0) {
-      app.ports.creatingSubscriptionToTasks.send(1);
+      // app.ports.creatingSubscriptionToTasks.send(1);
       getClient(authToken).subscribe({
         query: gql`${data}`,
         variables: {}
@@ -100,7 +80,6 @@ document.addEventListener("DOMContentLoaded", function() {
         error(err) {
           console.log('error is');
           console.log(err);
-          app.ports.gotTodoListData.send(err);
         }
       });
     }
@@ -120,7 +99,6 @@ document.addEventListener("DOMContentLoaded", function() {
         error(err) {
           console.log('error is');
           console.log(err);
-          app.ports.gotTodoListData.send(err);
         }
       });
     }

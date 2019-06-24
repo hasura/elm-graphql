@@ -316,6 +316,10 @@ img {
   border: none;
 }
 
+.wrapper {
+  box-shadow: 0 0 20px 0 rgba(0,0,0,.1);
+}
+
 .loadMoreSection {
   display: -webkit-flex;
   display: flex;
@@ -369,4 +373,12 @@ img {
   padding: 3.75px 7.5px;
   font-size: 14px;
   border: none;
+}
+
+.signup_success {
+  color: #fff;
+  border-color: #255625;
+  background-color: #5cb85c;
+  padding: 10px 10px;
+  border-radius: 5px;
 }

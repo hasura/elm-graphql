@@ -6,8 +6,10 @@ port module Main exposing (main)
 
 import Array
 import Browser
+import GraphQLClient exposing (makeGraphQLMutation, makeGraphQLQuery)
 import Graphql.Document
 import Graphql.Http
+import Graphql.Http.GraphqlError as GraphqlError exposing (GraphqlError)
 import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
 import Graphql.OptionalArgument as OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, hardcoded)
@@ -92,14 +94,11 @@ main =
 {-
    Constants
 -}
-{-
-   Replace it with your graphql url
--}
 
 
-graphql_url : String
-graphql_url =
-    "https://todo-mvc-elm-backend1.herokuapp.com/v1alpha1/graphql"
+failMsg : String
+failMsg =
+    "Something went wrong, check network tab for details"
 
 
 signup_url : String
@@ -116,19 +115,10 @@ login_url =
 ---- Ports ----
 
 
-port createSubscriptionToTasks : ( String, String ) -> Cmd msg
-
-
 port createSubscriptionToOnlineUsers : ( String, String ) -> Cmd msg
 
 
 port createSubscriptionToPublicTodos : ( String, String ) -> Cmd msg
-
-
-port gotTodoListData : (Json.Decode.Value -> msg) -> Sub msg
-
-
-port creatingSubscriptionToTasks : (Int -> msg) -> Sub msg
 
 
 port gotRecentPublicTodoItem : (Json.Decode.Value -> msg) -> Sub msg
@@ -145,10 +135,8 @@ subscriptions model =
 
         _ ->
             Sub.batch
-                [ gotTodoListData DataReceived
-                , gotRecentPublicTodoItem RecentPublicTodoReceived
+                [ gotRecentPublicTodoItem RecentPublicTodoReceived
                 , gotOnlineUsers GotOnlineUsers
-                , creatingSubscriptionToTasks DataLoading
                 , Time.every 10000 Tick
                 ]
 
@@ -163,7 +151,7 @@ type alias UserInfo =
     }
 
 
-type alias Task =
+type alias Todo =
     { id : Int
     , user_id : Int
     , is_completed : Bool
@@ -171,8 +159,8 @@ type alias Task =
     }
 
 
-type alias Tasks =
-    List Task
+type alias Todos =
+    List Todo
 
 
 type alias OnlineUsers =
@@ -185,26 +173,23 @@ type alias OnlineUser =
     }
 
 
-type alias Model =
-    { tasks : TaskData
+type alias MaybeMutationResponse =
+    Maybe MutationResponse
+
+
+type alias PrivateTodo =
+    { todos : TodoData
     , visibility : String
-    , newTask : String
-    , mutateTask : MutateTask
-    , userInfo : UserInfo
-    , authData : AuthData
-    , authForm : AuthForm
-    , publicTodoInsert : String
-    , publicTodoInfo : PublicTodoData
-    , online_users : OnlineUsersData
+    , newTodo : String
+    , mutateTodo : GraphQLResponse MaybeMutationResponse
     }
 
 
 type alias AuthForm =
     { displayForm : DisplayForm
     , isRequestInProgress : Bool
+    , isSignupSuccess : Bool
     , requestError : String
-    , loginResponse : LoginResponseParser
-    , signupResponse : SignupResponseParser
     }
 
 
@@ -224,7 +209,7 @@ type alias SignupResponseData =
     { id : Int, username : String }
 
 
-type alias TaskWUser =
+type alias TodoWUser =
     { id : Int
     , user_id : Int
     , is_completed : Bool
@@ -238,15 +223,16 @@ type alias User =
     }
 
 
-type alias TasksWUser =
-    List TaskWUser
+type alias TodosWUser =
+    List TodoWUser
 
 
 type alias PublicTodoData =
-    { tasks : TasksWUser
+    { todos : TodosWUser
     , oldestTodoId : Int
     , newTodoCount : Int
     , currentLastTodoId : Int
+    , oldTodosAvailable : Bool
     }
 
 
@@ -258,28 +244,36 @@ type alias AuthData =
     }
 
 
+type GraphQLResponse decodesTo
+    = GraphQLResponse (RemoteData (Graphql.Http.Error decodesTo) decodesTo)
+
+
 type alias MutationResponse =
     { affected_rows : Int
     }
 
 
-type alias MutateTask =
+type alias MutateTodo =
     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
 
 
 type alias PublicDataFetched =
-    RemoteData (Graphql.Http.Error TasksWUser) TasksWUser
+    RemoteData (Graphql.Http.Error TodosWUser) TodosWUser
 
 
-type alias UpdateTask =
+type alias PrivateDataFetched =
+    RemoteData (Graphql.Http.Error Todos) Todos
+
+
+type alias UpdateTodoItemResponse =
     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
 
 
-type alias UpdateLastSeen =
+type alias UpdateLastSeenResponse =
     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
 
 
-type alias DeleteTask =
+type alias DeleteTodo =
     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
 
 
@@ -287,22 +281,12 @@ type alias AllDeleted =
     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
 
 
-type alias TaskData =
-    RemoteData Json.Decode.Error Tasks
+type alias TodoData =
+    RemoteData (Graphql.Http.Error Todos) Todos
 
 
 type alias OnlineUsersData =
     RemoteData Json.Decode.Error OnlineUsers
-
-
-type alias PublicTaskData =
-    RemoteData Json.Decode.Error Tasks
-
-
-
-{-
-   Initialize the state
--}
 
 
 type DisplayForm
@@ -310,30 +294,61 @@ type DisplayForm
     | Signup
 
 
+type Operation
+    = NotYetInitiated
+    | OnGoing
+    | OperationFailed String
+
+
+type alias Model =
+    { authData : AuthData
+    , authForm : AuthForm
+    , privateData : PrivateTodo
+    , publicTodoInsert : String
+    , publicTodoInsertStatus : Operation
+    , publicTodoLoadingStatus : Bool
+    , publicTodoInfo : PublicTodoData
+    , online_users : OnlineUsersData
+    }
+
+
+
+{-
+   Initial access token for testing purposes
+-}
+
+
 iAT : String
 iAT =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6ImthcnRoaWt2dDI2IiwiaWF0IjoxNTU4NDM4ODI1Ljc1MiwiaHR0cHM6Ly9oYXN1cmEuaW8vand0L2NsYWltcyI6eyJ4LWhhc3VyYS1hbGxvd2VkLXJvbGVzIjpbIm1pbmUiLCJ1c2VyIl0sIngtaGFzdXJhLXVzZXItaWQiOiIxIiwieC1oYXN1cmEtZGVmYXVsdC1yb2xlIjoidXNlciIsIngtaGFzdXJhLXJvbGUiOiJ1c2VyIn19.cMWDnvYKUn9XVDhI1cSb5Arb5ch8XfuCvLPClTk-xbg"
+    ""
+
+
+initializePrivateTodo : PrivateTodo
+initializePrivateTodo =
+    { todos = RemoteData.Loading
+    , visibility = "All"
+    , newTodo = ""
+    , mutateTodo = GraphQLResponse RemoteData.NotAsked
+    }
 
 
 initialize : Model
 initialize =
-    { tasks = RemoteData.NotAsked
+    { privateData = initializePrivateTodo
     , online_users = RemoteData.NotAsked
-    , visibility = "All"
-    , newTask = ""
-    , mutateTask = RemoteData.NotAsked
-    , userInfo = UserInfo 1 "Karthik"
     , authData = AuthData "" "" "" iAT
-    , authForm = AuthForm Login False "" RemoteData.NotAsked RemoteData.NotAsked
+    , authForm = AuthForm Login False False ""
     , publicTodoInsert = ""
-    , publicTodoInfo = PublicTodoData [] 0 0 0
+    , publicTodoInsertStatus = NotYetInitiated
+    , publicTodoLoadingStatus = False
+    , publicTodoInfo = PublicTodoData [] 0 0 0 True
     }
 
 
 getInitialEvent : String -> Cmd Msg
 getInitialEvent authToken =
     Cmd.batch
-        [ createSubscriptionToTasks ( subscriptionDocument |> Graphql.Document.serializeSubscription, authToken )
+        [ fetchPrivateTodos authToken
         , createSubscriptionToPublicTodos ( publicListSubscription |> Graphql.Document.serializeSubscription, authToken )
         , createSubscriptionToOnlineUsers ( onlineUsersSubscription |> Graphql.Document.serializeSubscription, authToken )
         ]
@@ -344,6 +359,17 @@ init =
     ( initialize
     , getInitialEvent iAT
     )
+
+
+
+{-
+   Helper funcs
+-}
+
+
+retrieveGraphQLResponseBody : GraphQLResponse decodesTo -> RemoteData (Graphql.Http.Error decodesTo) decodesTo
+retrieveGraphQLResponseBody (GraphQLResponse value) =
+    value
 
 
 
@@ -372,9 +398,16 @@ todoListSubscriptionOptionalArgument optionalArgs =
     { optionalArgs | where_ = whereIsPublic False, order_by = orderByCreatedAt Desc }
 
 
-subscriptionDocument : SelectionSet Tasks RootSubscription
-subscriptionDocument =
-    Subscription.todolist todoListSubscriptionOptionalArgument todoListSelection
+fetchPrivateTodosQuery : SelectionSet Todos RootQuery
+fetchPrivateTodosQuery =
+    Query.todolist todoListSubscriptionOptionalArgument todoListSelection
+
+
+fetchPrivateTodos : String -> Cmd Msg
+fetchPrivateTodos authToken =
+    makeGraphQLQuery authToken
+        fetchPrivateTodosQuery
+        (RemoteData.fromResult >> FetchPrivateDataSuccess)
 
 
 
@@ -397,26 +430,23 @@ onlineUsersSelection =
 
 
 {-
-   End of it
--}
-{-
    Subscription query to fetch recent todolist
 -}
 
 
 publicTodoListSubscriptionOptionalArgument : TodolistOptionalArguments -> TodolistOptionalArguments
 publicTodoListSubscriptionOptionalArgument optionalArgs =
-    { optionalArgs | where_ = whereIsPublic True, order_by = orderByCreatedAt Desc }
+    { optionalArgs | where_ = whereIsPublic True, order_by = orderByCreatedAt Desc, limit = OptionalArgument.Present 1 }
 
 
-publicListSubscription : SelectionSet Tasks RootSubscription
+publicListSubscription : SelectionSet Todos RootSubscription
 publicListSubscription =
     Subscription.todolist publicTodoListSubscriptionOptionalArgument todoListSelection
 
 
-todoListSelection : SelectionSet Task Hasura.Object.Todolist
+todoListSelection : SelectionSet Todo Hasura.Object.Todolist
 todoListSelection =
-    SelectionSet.map4 Task
+    SelectionSet.map4 Todo
         Todolist.id
         Todolist.user_id
         Todolist.is_completed
@@ -492,9 +522,9 @@ selectUser =
         Users.username
 
 
-todoListSelectionWithUser : SelectionSet TaskWUser Hasura.Object.Todolist
+todoListSelectionWithUser : SelectionSet TodoWUser Hasura.Object.Todolist
 todoListSelectionWithUser =
-    SelectionSet.map5 TaskWUser
+    SelectionSet.map5 TodoWUser
         Todolist.id
         Todolist.user_id
         Todolist.is_completed
@@ -502,7 +532,7 @@ todoListSelectionWithUser =
         (Todolist.user selectUser)
 
 
-loadPublicTodoList : Int -> SelectionSet TasksWUser RootQuery
+loadPublicTodoList : Int -> SelectionSet TodosWUser RootQuery
 loadPublicTodoList id =
     Query.todolist (publicTodoListQueryOptionalArgs id 7) todoListSelectionWithUser
 
@@ -518,18 +548,15 @@ getAuthHeader token =
     Graphql.Http.withHeader "Authorization" ("Bearer " ++ token)
 
 
-makeRequest : SelectionSet TasksWUser RootQuery -> String -> Cmd Msg
-makeRequest q authToken =
-    q
-        |> Graphql.Http.queryRequest graphql_url
-        |> getAuthHeader authToken
-        |> Graphql.Http.send (RemoteData.fromResult >> FetchPublicDataSuccess)
+makeRequest : SelectionSet TodosWUser RootQuery -> String -> Cmd Msg
+makeRequest query authToken =
+    makeGraphQLQuery
+        authToken
+        query
+        (RemoteData.fromResult >> FetchPublicDataSuccess)
 
 
 
-{-
-   End of it
--}
 {-
    Fetching new todos
 -}
@@ -586,17 +613,54 @@ newPublicTodoListQueryOptionalArgs id optionalArgs =
     { optionalArgs | where_ = newPublicTodosWhere id, order_by = orderByCreatedAt Desc }
 
 
-newTodoQuery : Int -> SelectionSet TasksWUser RootQuery
+newTodoQuery : Int -> SelectionSet TodosWUser RootQuery
 newTodoQuery id =
     Query.todolist (newPublicTodoListQueryOptionalArgs id) todoListSelectionWithUser
 
 
-loadNewTodos : SelectionSet TasksWUser RootQuery -> String -> Cmd Msg
+loadNewTodos : SelectionSet TodosWUser RootQuery -> String -> Cmd Msg
 loadNewTodos q authToken =
-    q
-        |> Graphql.Http.queryRequest graphql_url
-        |> getAuthHeader authToken
-        |> Graphql.Http.send (RemoteData.fromResult >> FetchNewTodoDataSuccess)
+    makeGraphQLQuery authToken q (RemoteData.fromResult >> FetchNewTodoDataSuccess)
+
+
+ltLastTodoId : Int -> OptionalArgument Integer_comparison_exp
+ltLastTodoId id =
+    Present
+        (buildInteger_comparison_exp
+            (\args ->
+                { args
+                    | lt_ = Present id
+                }
+            )
+        )
+
+
+oldPublicTodosWhere : Int -> OptionalArgument Todolist_bool_exp
+oldPublicTodosWhere id =
+    Present
+        (buildTodolist_bool_exp
+            (\args ->
+                { args
+                    | id = ltLastTodoId id
+                    , is_public = equalToBoolean True
+                }
+            )
+        )
+
+
+oldPublicTodoListQueryOptionalArgs : Int -> TodolistOptionalArguments -> TodolistOptionalArguments
+oldPublicTodoListQueryOptionalArgs id optionalArgs =
+    { optionalArgs | where_ = oldPublicTodosWhere id, order_by = orderByCreatedAt Desc, limit = OptionalArgument.Present 7 }
+
+
+oldTodoQuery : Int -> SelectionSet TodosWUser RootQuery
+oldTodoQuery id =
+    Query.todolist (oldPublicTodoListQueryOptionalArgs id) todoListSelectionWithUser
+
+
+loadOldTodos : SelectionSet TodosWUser RootQuery -> String -> Cmd Msg
+loadOldTodos q authToken =
+    makeGraphQLQuery authToken q (RemoteData.fromResult >> FetchOldTodoDataSuccess)
 
 
 
@@ -606,23 +670,23 @@ loadNewTodos q authToken =
 
 
 insertTodoObjects : String -> Todolist_insert_input
-insertTodoObjects newTask =
+insertTodoObjects newTodo =
     buildTodolist_insert_input
         (\args ->
             { args
-                | task = Present newTask
+                | task = Present newTodo
             }
         )
 
 
 insertArgs : String -> InsertTodolistRequiredArguments
-insertArgs newTask =
-    InsertTodolistRequiredArguments [ insertTodoObjects newTask ]
+insertArgs newTodo =
+    InsertTodolistRequiredArguments [ insertTodoObjects newTodo ]
 
 
 getTodoListInsertObject : String -> SelectionSet (Maybe MutationResponse) RootMutation
-getTodoListInsertObject newTask =
-    insert_todolist identity (insertArgs newTask) mutationResponseSelection
+getTodoListInsertObject newTodo =
+    insert_todolist identity (insertArgs newTodo) mutationResponseSelection
 
 
 mutationResponseSelection : SelectionSet MutationResponse Hasura.Object.Todolist_mutation_response
@@ -633,10 +697,7 @@ mutationResponseSelection =
 
 makeMutation : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
 makeMutation mutation authToken =
-    mutation
-        |> Graphql.Http.mutationRequest graphql_url
-        |> getAuthHeader authToken
-        |> Graphql.Http.send (RemoteData.fromResult >> InsertTask)
+    makeGraphQLMutation authToken mutation (RemoteData.fromResult >> GraphQLResponse >> InsertPrivateTodoResponse)
 
 
 
@@ -646,24 +707,24 @@ makeMutation mutation authToken =
 
 
 getPublicTodoInsertObj : String -> SelectionSet (Maybe MutationResponse) RootMutation
-getPublicTodoInsertObj newPublicTask =
-    Mutation.insert_todolist identity (insertPublicTodoArgs newPublicTask) publicTodoMutateResponseSelection
+getPublicTodoInsertObj newPublicTodo =
+    Mutation.insert_todolist identity (insertPublicTodoArgs newPublicTodo) publicTodoMutateResponseSelection
 
 
 insertPublicTodoObjects : String -> Todolist_insert_input
-insertPublicTodoObjects newPublicTask =
+insertPublicTodoObjects newPublicTodo =
     buildTodolist_insert_input
         (\args ->
             { args
-                | task = Present newPublicTask
+                | task = Present newPublicTodo
                 , is_public = Present True
             }
         )
 
 
 insertPublicTodoArgs : String -> InsertTodolistRequiredArguments
-insertPublicTodoArgs newPublicTask =
-    InsertTodolistRequiredArguments [ insertPublicTodoObjects newPublicTask ]
+insertPublicTodoArgs newPublicTodo =
+    InsertTodolistRequiredArguments [ insertPublicTodoObjects newPublicTodo ]
 
 
 publicTodoMutateResponseSelection : SelectionSet MutationResponse Hasura.Object.Todolist_mutation_response
@@ -672,23 +733,17 @@ publicTodoMutateResponseSelection =
         TodolistMutation.affected_rows
 
 
-makePublicMutation : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
-makePublicMutation mutation authToken =
-    mutation
-        |> Graphql.Http.mutationRequest graphql_url
-        |> getAuthHeader authToken
-        |> Graphql.Http.send (RemoteData.fromResult >> PublicTodoMutation)
+insertPublicTodo : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
+insertPublicTodo mutation authToken =
+    makeGraphQLMutation
+        authToken
+        mutation
+        (RemoteData.fromResult >> GraphQLResponse >> InsertPublicTodoResponse)
 
 
 
-{-
-   End of it
--}
 {-
    Update user last_seen
--}
-{-
-   End of it
 -}
 
 
@@ -728,10 +783,10 @@ updateUserLastSeen currTime =
 
 updateLastSeen : String -> SelectionSet (Maybe MutationResponse) RootMutation -> Cmd Msg
 updateLastSeen authToken updateQuery =
-    updateQuery
-        |> Graphql.Http.mutationRequest graphql_url
-        |> getAuthHeader authToken
-        |> Graphql.Http.send (RemoteData.fromResult >> UpdateLastSeen)
+    makeGraphQLMutation
+        authToken
+        updateQuery
+        (RemoteData.fromResult >> UpdateLastSeen)
 
 
 
@@ -740,8 +795,8 @@ updateLastSeen authToken updateQuery =
 -}
 
 
-updateTaskStatus : Int -> Bool -> SelectionSet (Maybe MutationResponse) RootMutation
-updateTaskStatus todoId status =
+updateTodoStatus : Int -> Bool -> SelectionSet (Maybe MutationResponse) RootMutation
+updateTodoStatus todoId status =
     Mutation.update_todolist (setTodoListUpdateArgs status) (setTodoListUpdateWhere todoId) mutationResponseSelection
 
 
@@ -786,21 +841,20 @@ setTodoListUpdateWhere todoId =
 
 updateTodoList : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
 updateTodoList mutation authToken =
-    mutation
-        |> Graphql.Http.mutationRequest graphql_url
-        |> getAuthHeader authToken
-        |> Graphql.Http.send (RemoteData.fromResult >> UpdateTask)
+    makeGraphQLMutation
+        authToken
+        mutation
+        (RemoteData.fromResult >> UpdateTodo)
 
 
 
-{- -}
 {-
    Delete todo list
 -}
 
 
-deleteSingleTask : Int -> SelectionSet (Maybe MutationResponse) RootMutation
-deleteSingleTask todoId =
+deleteSingleTodo : Int -> SelectionSet (Maybe MutationResponse) RootMutation
+deleteSingleTodo todoId =
     Mutation.delete_todolist (setTodoListDeleteWhere todoId) mutationResponseSelection
 
 
@@ -824,23 +878,20 @@ delResponseSelection =
 
 deleteSingleTodoItem : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
 deleteSingleTodoItem mutation authToken =
-    mutation
-        |> Graphql.Http.mutationRequest graphql_url
-        |> getAuthHeader authToken
-        |> Graphql.Http.send (RemoteData.fromResult >> TaskDeleted)
+    makeGraphQLMutation
+        authToken
+        mutation
+        (RemoteData.fromResult >> TodoDeleted)
 
 
 
-{-
-   End of it
--}
 {-
    Delete all completed tasks
 -}
 
 
-deleteAllCompletedTask : Int -> SelectionSet (Maybe MutationResponse) RootMutation
-deleteAllCompletedTask _ =
+deleteAllCompletedTodo : SelectionSet (Maybe MutationResponse) RootMutation
+deleteAllCompletedTodo =
     Mutation.delete_todolist (setTodoListDeleteAllCompletedWhere True) mutationResponseSelection
 
 
@@ -874,63 +925,66 @@ delAllResponseSelection =
 
 deleteAllCompletedItems : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
 deleteAllCompletedItems mutation authToken =
-    mutation
-        |> Graphql.Http.mutationRequest graphql_url
-        |> getAuthHeader authToken
-        |> Graphql.Http.send (RemoteData.fromResult >> AllCompletedItemsDeleted)
+    makeGraphQLMutation
+        authToken
+        mutation
+        (RemoteData.fromResult >> AllCompletedItemsDeleted)
 
 
 
-{-
-   End of it
--}
 ---- UPDATE ----
-{-
-   All the messages this application will respect
--}
 
 
 type Msg
     = Tick Time.Posix
-    | DataLoading Int
-    | DataReceived Json.Decode.Value
-    | UpdateNewTask String
-    | UpdatePublicNewTask String
-    | MarkCompleted Int Bool
-    | UpdateVisibility String
-    | RunMutateTask
-    | RunMutatePublicTask
-    | InsertTask MutateTask
-    | PublicTodoMutation MutateTask
-    | UpdateTask UpdateTask
-    | UpdateLastSeen UpdateLastSeen
-    | TaskDeleted DeleteTask
-    | DelTask Int
-    | AllCompletedItemsDeleted AllDeleted
-    | DeleteAllCompletedItems Int
-    | RecentPublicTodoReceived Json.Decode.Value
-    | GotOnlineUsers Json.Decode.Value
+      {-
+         Login signup messages
+      -}
     | EnteredEmail String
     | EnteredPassword String
     | EnteredUsername String
     | MakeLoginRequest
     | MakeSignupRequest
-    | FetchPublicDataSuccess PublicDataFetched
-    | FetchNewTodoDataSuccess PublicDataFetched
-    | FetchNewPublicTodos
     | ToggleAuthForm DisplayForm
     | GotLoginResponse LoginResponseParser
     | GotSignupResponse SignupResponseParser
     | ClearAuthToken
+      {-
+         Subscription messages
+      -}
+    | RecentPublicTodoReceived Json.Decode.Value
+    | GotOnlineUsers Json.Decode.Value
+      {-
+         Private todos messages
+      -}
+    | UpdateNewTodo String
+    | MarkCompleted Int Bool
+    | UpdateVisibility String
+    | InsertPrivateTodo
+    | InsertPrivateTodoResponse (GraphQLResponse MaybeMutationResponse)
+    | UpdateTodo UpdateTodoItemResponse
+    | DelTodo Int
+    | TodoDeleted DeleteTodo
+    | AllCompletedItemsDeleted AllDeleted
+    | DeleteAllCompletedItems
+    | FetchPrivateDataSuccess TodoData
+      {-
+         Public todos messages
+      -}
+    | InsertPublicTodo
+    | InsertPublicTodoResponse (GraphQLResponse MaybeMutationResponse)
+    | UpdatePublicNewTodo String
+    | FetchPublicDataSuccess PublicDataFetched
+    | FetchNewTodoDataSuccess PublicDataFetched
+    | FetchOldTodoDataSuccess PublicDataFetched
+    | FetchNewPublicTodos
+    | FetchOldPublicTodos
+    | UpdateLastSeen UpdateLastSeenResponse
 
 
 
 {-
-   | InsertingTask Int
-   | TaskInserted Json.Decode.Value
--}
-{-
-   Encoder and decoder
+   Login encoder and decoder
 -}
 
 
@@ -950,7 +1004,7 @@ decodeLogin =
 
 
 {-
-   For signup
+   Signup encoder and decoder
 -}
 
 
@@ -1002,7 +1056,7 @@ update msg model =
         GotSignupResponse data ->
             case data of
                 RemoteData.Success d ->
-                    updateAuthFormData (\authForm -> { authForm | isRequestInProgress = False, requestError = "", displayForm = Login }) model Cmd.none
+                    updateAuthFormData (\authForm -> { authForm | isRequestInProgress = False, requestError = "", displayForm = Login, isSignupSuccess = True }) model Cmd.none
 
                 RemoteData.Failure err ->
                     updateAuthFormData (\authForm -> { authForm | isRequestInProgress = False, requestError = "Signup failed!" }) model Cmd.none
@@ -1030,13 +1084,10 @@ update msg model =
                         , expect = Http.expectJson (RemoteData.fromResult >> GotSignupResponse) decodeSignup
                         }
             in
-            updateAuthFormData (\authForm -> { authForm | isRequestInProgress = True }) model signupRequest
+            updateAuthFormData (\authForm -> { authForm | isRequestInProgress = True, isSignupSuccess = False }) model signupRequest
 
         ToggleAuthForm displayForm ->
-            updateAuthFormData (\authForm -> { authForm | displayForm = displayForm }) model Cmd.none
-
-        DataLoading _ ->
-            ( { model | tasks = RemoteData.Loading }, Cmd.none )
+            updateAuthFormData (\authForm -> { authForm | displayForm = displayForm, isSignupSuccess = False, requestError = "" }) model Cmd.none
 
         GotOnlineUsers data ->
             let
@@ -1045,22 +1096,10 @@ update msg model =
             in
             ( { model | online_users = remoteData }, Cmd.none )
 
-        DataReceived data ->
-            let
-                remoteData =
-                    Json.Decode.decodeValue (subscriptionDocument |> Graphql.Document.decoder) data |> RemoteData.fromResult
-            in
-            ( { model | tasks = remoteData }, Cmd.none )
-
         RecentPublicTodoReceived data ->
             let
                 remoteData =
                     Json.Decode.decodeValue (publicListSubscription |> Graphql.Document.decoder) data |> RemoteData.fromResult
-
-                {-
-                   _ =
-                       Debug.log "remoteData" remoteData
-                -}
             in
             case remoteData of
                 RemoteData.Success recentData ->
@@ -1081,7 +1120,7 @@ update msg model =
                                                 updatedNewTodoCount =
                                                     model.publicTodoInfo.newTodoCount + 1
                                             in
-                                            case model.publicTodoInfo.currentLastTodoId == recDat.id of
+                                            case model.publicTodoInfo.currentLastTodoId >= recDat.id of
                                                 True ->
                                                     ( model, Cmd.none )
 
@@ -1097,6 +1136,9 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        FetchPrivateDataSuccess response ->
+            updatePrivateData (\privateData -> { privateData | todos = response }) model Cmd.none
+
         FetchPublicDataSuccess response ->
             case response of
                 RemoteData.Success successData ->
@@ -1111,7 +1153,32 @@ update msg model =
                             in
                             case oldestTodo of
                                 Just item ->
-                                    updatePublicTodoData (\publicTodoInfo -> { publicTodoInfo | tasks = successData, oldestTodoId = item.id }) model Cmd.none
+                                    updatePublicTodoData (\publicTodoInfo -> { publicTodoInfo | todos = successData, oldestTodoId = item.id }) model Cmd.none
+
+                                Nothing ->
+                                    ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        FetchOldTodoDataSuccess response ->
+            case response of
+                RemoteData.Success successData ->
+                    case List.length successData of
+                        0 ->
+                            updatePublicTodoData
+                                (\publicTodoInfo -> { publicTodoInfo | oldTodosAvailable = False })
+                                model
+                                Cmd.none
+
+                        _ ->
+                            let
+                                oldestTodo =
+                                    Array.get 0 (Array.fromList (List.foldl (::) [] successData))
+                            in
+                            case oldestTodo of
+                                Just item ->
+                                    updatePublicTodoData (\publicTodoInfo -> { publicTodoInfo | todos = List.append publicTodoInfo.todos successData, oldestTodoId = item.id }) model Cmd.none
 
                                 Nothing ->
                                     ( model, Cmd.none )
@@ -1133,7 +1200,7 @@ update msg model =
                             in
                             case newestTodo of
                                 Just item ->
-                                    updatePublicTodoData (\publicTodoInfo -> { publicTodoInfo | tasks = List.append successData publicTodoInfo.tasks, currentLastTodoId = item.id, newTodoCount = 0 }) model Cmd.none
+                                    updatePublicTodoData (\publicTodoInfo -> { publicTodoInfo | todos = List.append successData publicTodoInfo.todos, currentLastTodoId = item.id, newTodoCount = 0 }) model Cmd.none
 
                                 Nothing ->
                                     ( model, Cmd.none )
@@ -1141,28 +1208,39 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        UpdateNewTask newTask ->
-            ( { model | newTask = newTask }, Cmd.none )
+        UpdateNewTodo newTodo ->
+            updatePrivateData (\privateData -> { privateData | newTodo = newTodo }) model Cmd.none
 
-        UpdatePublicNewTask newPublicTask ->
-            ( { model | publicTodoInsert = newPublicTask }, Cmd.none )
+        UpdatePublicNewTodo newPublicTodo ->
+            ( { model | publicTodoInsert = newPublicTodo }, Cmd.none )
 
         UpdateVisibility visibility ->
-            ( { model | visibility = visibility }, Cmd.none )
+            updatePrivateData (\privateData -> { privateData | visibility = visibility }) model Cmd.none
 
-        InsertTask response ->
-            ( { model | mutateTask = response, newTask = "" }
-            , Cmd.none
-            )
+        InsertPrivateTodoResponse response ->
+            updatePrivateData (\privateData -> { privateData | mutateTodo = response, newTodo = "" }) model (fetchPrivateTodos model.authData.authToken)
 
-        PublicTodoMutation _ ->
+        InsertPublicTodoResponse publicTodoInsertResponse ->
+            let
+                responseBody =
+                    retrieveGraphQLResponseBody publicTodoInsertResponse
+            in
+            case responseBody of
+                RemoteData.Success response ->
+                    ( { model | publicTodoInsertStatus = NotYetInitiated, publicTodoInsert = "" }, Cmd.none )
+
+                RemoteData.Failure failureResp ->
+                    ( { model | publicTodoInsertStatus = OperationFailed failMsg }, Cmd.none )
+
+                RemoteData.NotAsked ->
+                    ( model, Cmd.none )
+
+                RemoteData.Loading ->
+                    ( model, Cmd.none )
+
+        UpdateTodo _ ->
             ( model
-            , Cmd.none
-            )
-
-        UpdateTask _ ->
-            ( model
-            , Cmd.none
+            , fetchPrivateTodos model.authData.authToken
             )
 
         UpdateLastSeen _ ->
@@ -1170,29 +1248,39 @@ update msg model =
             , Cmd.none
             )
 
-        TaskDeleted _ ->
+        TodoDeleted _ ->
             ( model
-            , Cmd.none
+            , fetchPrivateTodos model.authData.authToken
             )
 
         AllCompletedItemsDeleted _ ->
             ( model
-            , Cmd.none
+            , fetchPrivateTodos model.authData.authToken
             )
 
-        RunMutateTask ->
-            let
-                mutationObj =
-                    getTodoListInsertObject model.newTask
-            in
-            ( { model | mutateTask = RemoteData.Loading }, makeMutation mutationObj model.authData.authToken )
+        InsertPrivateTodo ->
+            case String.length model.privateData.newTodo of
+                0 ->
+                    ( model, Cmd.none )
 
-        RunMutatePublicTask ->
-            let
-                mutationObj =
-                    getPublicTodoInsertObj model.publicTodoInsert
-            in
-            ( { model | publicTodoInsert = "" }, makePublicMutation mutationObj model.authData.authToken )
+                _ ->
+                    let
+                        mutationObj =
+                            getTodoListInsertObject model.privateData.newTodo
+                    in
+                    updatePrivateData (\privateData -> { privateData | mutateTodo = GraphQLResponse RemoteData.Loading }) model (makeMutation mutationObj model.authData.authToken)
+
+        InsertPublicTodo ->
+            case String.length model.publicTodoInsert of
+                0 ->
+                    ( model, Cmd.none )
+
+                _ ->
+                    let
+                        mutationObj =
+                            getPublicTodoInsertObj model.publicTodoInsert
+                    in
+                    ( { model | publicTodoInsertStatus = OnGoing }, insertPublicTodo mutationObj model.authData.authToken )
 
         FetchNewPublicTodos ->
             let
@@ -1201,26 +1289,29 @@ update msg model =
             in
             ( model, loadNewTodos newQuery model.authData.authToken )
 
+        FetchOldPublicTodos ->
+            let
+                oldQuery =
+                    oldTodoQuery model.publicTodoInfo.oldestTodoId
+            in
+            ( model, loadOldTodos oldQuery model.authData.authToken )
+
         MarkCompleted id completed ->
             let
                 updateObj =
-                    updateTaskStatus id (not completed)
+                    updateTodoStatus id (not completed)
             in
             ( model, updateTodoList updateObj model.authData.authToken )
 
-        DelTask id ->
+        DelTodo id ->
             let
                 deleteObj =
-                    deleteSingleTask id
+                    deleteSingleTodo id
             in
             ( model, deleteSingleTodoItem deleteObj model.authData.authToken )
 
-        DeleteAllCompletedItems id ->
-            let
-                deleteAllObj =
-                    deleteAllCompletedTask id
-            in
-            ( model, deleteAllCompletedItems deleteAllObj model.authData.authToken )
+        DeleteAllCompletedItems ->
+            ( model, deleteAllCompletedItems deleteAllCompletedTodo model.authData.authToken )
 
         EnteredEmail email ->
             updateAuthData (\authData -> { authData | email = email }) model Cmd.none
@@ -1230,6 +1321,11 @@ update msg model =
 
         EnteredUsername username ->
             updateAuthData (\authData -> { authData | username = username }) model Cmd.none
+
+
+updatePrivateData : (PrivateTodo -> PrivateTodo) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
+updatePrivateData transform model cmd =
+    ( { model | privateData = transform model.privateData }, cmd )
 
 
 updateAuthData : (AuthData -> AuthData) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
@@ -1251,55 +1347,55 @@ updatePublicTodoData transform model cmd =
 ---- VIEW ----
 
 
-viewListItem : Task -> Html Msg
-viewListItem task =
+viewListItem : Todo -> Html Msg
+viewListItem todo =
     li []
         [ div [ class "view" ]
             [ div [ class "round" ]
-                [ input [ checked task.is_completed, type_ "checkbox", id (String.fromInt task.id), onClick (MarkCompleted task.id task.is_completed) ] []
-                , label [ for (String.fromInt task.id) ] []
+                [ input [ checked todo.is_completed, type_ "checkbox", id (String.fromInt todo.id), onClick (MarkCompleted todo.id todo.is_completed) ] []
+                , label [ for (String.fromInt todo.id) ] []
                 ]
             ]
         , div
             [ classList
                 [ ( "labelContent", True )
-                , ( "completed", task.is_completed )
+                , ( "completed", todo.is_completed )
                 ]
             ]
-            [ div [] [ text task.task ]
+            [ div [] [ text todo.task ]
             ]
-        , button [ class "closeBtn", onClick (DelTask task.id) ]
+        , button [ class "closeBtn", onClick (DelTodo todo.id) ]
             [ text "x"
             ]
         ]
 
 
-viewKeyedListItem : Task -> ( String, Html Msg )
-viewKeyedListItem task =
-    ( String.fromInt task.id, viewListItem task )
+viewKeyedListItem : Todo -> ( String, Html Msg )
+viewKeyedListItem todo =
+    ( String.fromInt todo.id, viewListItem todo )
 
 
-filterTasks : String -> Task -> Bool
-filterTasks visibility task =
+filterTodos : String -> Todo -> Bool
+filterTodos visibility todo =
     case visibility of
         "Completed" ->
-            task.is_completed
+            todo.is_completed
 
         "Active" ->
-            not task.is_completed
+            not todo.is_completed
 
         _ ->
             True
 
 
-todoListWrapper : String -> Tasks -> UserInfo -> Html Msg
-todoListWrapper visibility tasks userInfo =
+todoListWrapper : String -> Todos -> Html Msg
+todoListWrapper visibility todos =
     div [ class "wrapper" ]
         [ div [ class "todoListWrapper" ]
             [ Keyed.ul [] <|
-                List.map viewKeyedListItem (List.filter (filterTasks visibility) tasks)
+                List.map viewKeyedListItem (List.filter (filterTodos visibility) todos)
             ]
-        , footerList tasks visibility userInfo
+        , footerList todos visibility
         ]
 
 
@@ -1330,88 +1426,93 @@ footerActionBtns visibility =
         ]
 
 
-clearButton : UserInfo -> Html Msg
-clearButton userInfo =
-    button [ class "clearComp", onClick (DeleteAllCompletedItems userInfo.id) ]
+clearButton : Html Msg
+clearButton =
+    button [ class "clearComp", onClick DeleteAllCompletedItems ]
         [ text "Clear completed"
         ]
 
 
-footerList : Tasks -> String -> UserInfo -> Html Msg
-footerList tasks visibility userInfo =
+footerList : Todos -> String -> Html Msg
+footerList todos visibility =
     div [ class "footerList" ]
         [ span []
             [ text
                 (String.fromInt
                     (List.length
-                        (List.filter (filterTasks visibility) tasks)
+                        (List.filter (filterTodos visibility) todos)
                     )
                     ++ " Items"
                 )
             ]
         , footerActionBtns visibility
-        , clearButton userInfo
+        , clearButton
         ]
 
 
-renderTasks : Model -> Html Msg
-renderTasks model =
+renderTodos : PrivateTodo -> Html Msg
+renderTodos privateData =
     div [ class "tasks_wrapper" ] <|
-        case model.tasks of
+        case privateData.todos of
             RemoteData.NotAsked ->
-                [ text "Not asked" ]
+                [ text "" ]
 
-            RemoteData.Success tasks ->
-                [ todoListWrapper model.visibility tasks model.userInfo ]
+            RemoteData.Success todos ->
+                [ todoListWrapper privateData.visibility todos ]
 
             RemoteData.Loading ->
                 [ span [ class "loading_text" ]
-                    [ text "Loading tasks ..." ]
+                    [ text "Loading todos ..." ]
                 ]
 
             RemoteData.Failure err ->
-                [ text ("Error loading data: " ++ Json.Decode.errorToString err) ]
+                [ text "" ]
 
 
-taskMutation : Model -> Html msg
-taskMutation model =
+handleMutationTodo : GraphQLResponse MaybeMutationResponse -> List (Html msg)
+handleMutationTodo (GraphQLResponse mutationTodo) =
+    case mutationTodo of
+        RemoteData.NotAsked ->
+            [ text "" ]
+
+        RemoteData.Success todos ->
+            [ text "" ]
+
+        RemoteData.Loading ->
+            [ i [ class "fa fa-spinner fa-spin" ] []
+            ]
+
+        RemoteData.Failure err ->
+            [ text "Error Mutating data:" ]
+
+
+todoMutation : GraphQLResponse MaybeMutationResponse -> Html msg
+todoMutation mutateTodo =
     span [ class "mutation_loader" ] <|
-        case model.mutateTask of
-            RemoteData.NotAsked ->
-                [ text "" ]
-
-            RemoteData.Success tasks ->
-                [ text "" ]
-
-            RemoteData.Loading ->
-                [ i [ class "fa fa-spinner fa-spin" ] []
-                ]
-
-            RemoteData.Failure err ->
-                [ text "Error loading data: " ]
+        handleMutationTodo mutateTodo
 
 
-personalTodos : Model -> Html Msg
-personalTodos model =
+personalTodos : PrivateTodo -> Html Msg
+personalTodos privateData =
     div [ class "col-xs-12 col-md-6 sliderMenu p-30" ]
         [ div [ class "todoWrapper" ]
             [ div [ class "sectionHeader" ]
                 [ text "Personal todos"
                 ]
-            , form [ class "formInput", onSubmit RunMutateTask ]
-                [ input [ class "input", placeholder "What needs to be done?", onInput UpdateNewTask, value model.newTask ]
+            , form [ class "formInput", onSubmit InsertPrivateTodo ]
+                [ input [ class "input", placeholder "What needs to be done?", onInput UpdateNewTodo, value privateData.newTodo ]
                     []
                 , i [ class "inputMarker fa fa-angle-right" ] []
-                , taskMutation model
+                , todoMutation privateData.mutateTodo
                 ]
-            , renderTasks model
+            , renderTodos privateData
             ]
         ]
 
 
 
 {-
-   Public
+   Public todo render functions
 -}
 
 
@@ -1432,6 +1533,20 @@ loadLatestPublicTodo count =
                 ]
 
 
+loadOldPublicTodos : Bool -> Html Msg
+loadOldPublicTodos oldTodosAvailable =
+    case oldTodosAvailable of
+        True ->
+            div [ class "loadMoreSection", onClick FetchOldPublicTodos ]
+                [ text "Load older tasks"
+                ]
+
+        False ->
+            div [ class "loadMoreSection" ]
+                [ text "No more public tasks!"
+                ]
+
+
 publicTodoListWrapper : PublicTodoData -> Html Msg
 publicTodoListWrapper publicTodoInfo =
     div [ class "wrapper" ]
@@ -1439,24 +1554,41 @@ publicTodoListWrapper publicTodoInfo =
         , div
             [ class "todoListWrapper" ]
             [ Keyed.ul [] <|
-                List.map publicViewKeyedListItem publicTodoInfo.tasks
+                List.map publicViewKeyedListItem publicTodoInfo.todos
             ]
+        , loadOldPublicTodos publicTodoInfo.oldTodosAvailable
         ]
 
 
-publicViewListItem : TaskWUser -> Html Msg
-publicViewListItem task =
+publicViewListItem : TodoWUser -> Html Msg
+publicViewListItem todo =
     li []
-        [ div [ class "userInfoPublic", title (String.fromInt task.user_id) ]
-            [ text ("@" ++ task.user.username)
+        [ div [ class "userInfoPublic", title (String.fromInt todo.user_id) ]
+            [ text ("@" ++ todo.user.username)
             ]
-        , div [ class "labelContent" ] [ text task.task ]
+        , div [ class "labelContent" ] [ text todo.task ]
         ]
 
 
-publicViewKeyedListItem : TaskWUser -> ( String, Html Msg )
-publicViewKeyedListItem task =
-    ( String.fromInt task.id, publicViewListItem task )
+publicViewKeyedListItem : TodoWUser -> ( String, Html Msg )
+publicViewKeyedListItem todo =
+    ( String.fromInt todo.id, publicViewListItem todo )
+
+
+publicTodoInsertStatus : Operation -> Html msg
+publicTodoInsertStatus status =
+    span [ class "mutation_loader" ] <|
+        case status of
+            NotYetInitiated ->
+                [ text "" ]
+
+            OnGoing ->
+                [ i [ class "fa fa-spinner fa-spin" ] []
+                ]
+
+            OperationFailed error ->
+                [ i [ title error, class "fas fa-exclamation-triangle" ] []
+                ]
 
 
 publicTodos : Model -> Html Msg
@@ -1466,10 +1598,11 @@ publicTodos model =
             [ div [ class "sectionHeader" ]
                 [ text "Public feed (realtime)"
                 ]
-            , form [ class "formInput", onSubmit RunMutatePublicTask ]
-                [ input [ class "input", placeholder "What needs to be done?", value model.publicTodoInsert, onInput UpdatePublicNewTask ]
+            , form [ class "formInput", onSubmit InsertPublicTodo ]
+                [ input [ class "input", placeholder "What needs to be done?", value model.publicTodoInsert, onInput UpdatePublicNewTodo ]
                     []
                 , i [ class "inputMarker fa fa-angle-right" ] []
+                , publicTodoInsertStatus model.publicTodoInsertStatus
                 ]
             , publicTodoListWrapper model.publicTodoInfo
             ]
@@ -1478,7 +1611,7 @@ publicTodos model =
 
 
 {-
-   Login
+   Login render functions
 -}
 
 
@@ -1531,12 +1664,25 @@ actionButton val isRequestInProgress clickHandler =
         [ text val ]
 
 
-loginView : AuthData -> Bool -> String -> Html Msg
-loginView authData isRequestInProgress reqErr =
+showSignupSuccess : Bool -> Html msg
+showSignupSuccess isSignupSuccess =
+    case isSignupSuccess of
+        True ->
+            div [ class "signup_success" ]
+                [ text "Signup successful! Please login with the same credentials to continue"
+                ]
+
+        False ->
+            text ""
+
+
+loginView : AuthData -> Bool -> String -> Bool -> Html Msg
+loginView authData isRequestInProgress reqErr isSignupSuccess =
     div [ class "container authentication_wrapper" ]
         [ div [ class "row" ]
             [ div [ class "col-md-12 col-xs-12" ]
-                [ h1 [ class "c_mb_5 ta_center" ]
+                [ showSignupSuccess isSignupSuccess
+                , h1 [ class "c_mb_5 ta_center" ]
                     [ text "Sign in"
                     ]
                 , p [ class "c_mb_10 ta_center" ]
@@ -1583,7 +1729,7 @@ signupView authData isRequestInProgress reqErr =
 
 
 {-
-   End of it
+   Main view function
 -}
 
 
@@ -1594,7 +1740,7 @@ view model =
             0 ->
                 case model.authForm.displayForm of
                     Login ->
-                        [ loginView model.authData model.authForm.isRequestInProgress model.authForm.requestError
+                        [ loginView model.authData model.authForm.isRequestInProgress model.authForm.requestError model.authForm.isSignupSuccess
                         ]
 
                     Signup ->
@@ -1680,7 +1826,7 @@ viewTodoSection model =
         [ topNavBar
         , div [ class "container-fluid p-left-right-0" ]
             [ div [ class "col-xs-12 col-md-9 p-left-right-0" ]
-                [ personalTodos model
+                [ personalTodos model.privateData
                 , publicTodos model
                 ]
             , div [ class "col-xs-12 col-md-3 p-left-right-0" ]
