@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Hasura.Object.Users exposing (created_at, id, last_seen, password, token, username)
+module Hasura.Object.Users exposing (TodosOptionalArguments, id, name, todos)
 
 import Graphql.Internal.Builder.Argument as Argument exposing (Argument)
 import Graphql.Internal.Builder.Object as Object
@@ -10,6 +10,7 @@ import Graphql.Internal.Encode as Encode exposing (Value)
 import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
 import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet exposing (SelectionSet)
+import Hasura.Enum.Todos_select_column
 import Hasura.InputObject
 import Hasura.Interface
 import Hasura.Object
@@ -19,31 +20,42 @@ import Hasura.Union
 import Json.Decode as Decode
 
 
-created_at : SelectionSet Hasura.ScalarCodecs.Timestamptz Hasura.Object.Users
-created_at =
-    Object.selectionForField "ScalarCodecs.Timestamptz" "created_at" [] (Hasura.ScalarCodecs.codecs |> Hasura.Scalar.unwrapCodecs |> .codecTimestamptz |> .decoder)
-
-
-id : SelectionSet Int Hasura.Object.Users
+id : SelectionSet String Hasura.Object.Users
 id =
-    Object.selectionForField "Int" "id" [] Decode.int
+    Object.selectionForField "String" "id" [] Decode.string
 
 
-last_seen : SelectionSet Hasura.ScalarCodecs.Timestamptz Hasura.Object.Users
-last_seen =
-    Object.selectionForField "ScalarCodecs.Timestamptz" "last_seen" [] (Hasura.ScalarCodecs.codecs |> Hasura.Scalar.unwrapCodecs |> .codecTimestamptz |> .decoder)
+name : SelectionSet String Hasura.Object.Users
+name =
+    Object.selectionForField "String" "name" [] Decode.string
 
 
-password : SelectionSet String Hasura.Object.Users
-password =
-    Object.selectionForField "String" "password" [] Decode.string
+type alias TodosOptionalArguments =
+    { distinct_on : OptionalArgument (List Hasura.Enum.Todos_select_column.Todos_select_column)
+    , limit : OptionalArgument Int
+    , offset : OptionalArgument Int
+    , order_by : OptionalArgument (List Hasura.InputObject.Todos_order_by)
+    , where_ : OptionalArgument Hasura.InputObject.Todos_bool_exp
+    }
 
 
-token : SelectionSet (Maybe String) Hasura.Object.Users
-token =
-    Object.selectionForField "(Maybe String)" "token" [] (Decode.string |> Decode.nullable)
+{-| An array relationship
 
+  - distinct\_on - distinct select on columns
+  - limit - limit the nuber of rows returned
+  - offset - skip the first n rows. Use only with order\_by
+  - order\_by - sort the rows by one or more columns
+  - where\_ - filter the rows returned
 
-username : SelectionSet String Hasura.Object.Users
-username =
-    Object.selectionForField "String" "username" [] Decode.string
+-}
+todos : (TodosOptionalArguments -> TodosOptionalArguments) -> SelectionSet decodesTo Hasura.Object.Todos -> SelectionSet (List decodesTo) Hasura.Object.Users
+todos fillInOptionals object_ =
+    let
+        filledInOptionals =
+            fillInOptionals { distinct_on = Absent, limit = Absent, offset = Absent, order_by = Absent, where_ = Absent }
+
+        optionalArgs =
+            [ Argument.optional "distinct_on" filledInOptionals.distinct_on (Encode.enum Hasura.Enum.Todos_select_column.toString |> Encode.list), Argument.optional "limit" filledInOptionals.limit Encode.int, Argument.optional "offset" filledInOptionals.offset Encode.int, Argument.optional "order_by" filledInOptionals.order_by (Hasura.InputObject.encodeTodos_order_by |> Encode.list), Argument.optional "where" filledInOptionals.where_ Hasura.InputObject.encodeTodos_bool_exp ]
+                |> List.filterMap identity
+    in
+    Object.selectionForCompositeField "todos" optionalArgs object_ (identity >> Decode.list)

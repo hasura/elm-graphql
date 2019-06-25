@@ -2,46 +2,46 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Hasura.Enum.Todolist_constraint exposing (Todolist_constraint(..), decoder, fromString, list, toString)
+module Hasura.Enum.Todos_constraint exposing (Todos_constraint(..), decoder, fromString, list, toString)
 
 import Json.Decode as Decode exposing (Decoder)
 
 
-{-| unique or primary key constraints on table "todolist"
+{-| unique or primary key constraints on table "todos"
 
-  - Todolist\_pkey - unique or primary key constraint
+  - Todos\_pkey - unique or primary key constraint
 
 -}
-type Todolist_constraint
-    = Todolist_pkey
+type Todos_constraint
+    = Todos_pkey
 
 
-list : List Todolist_constraint
+list : List Todos_constraint
 list =
-    [ Todolist_pkey ]
+    [ Todos_pkey ]
 
 
-decoder : Decoder Todolist_constraint
+decoder : Decoder Todos_constraint
 decoder =
     Decode.string
         |> Decode.andThen
             (\string ->
                 case string of
-                    "todolist_pkey" ->
-                        Decode.succeed Todolist_pkey
+                    "todos_pkey" ->
+                        Decode.succeed Todos_pkey
 
                     _ ->
-                        Decode.fail ("Invalid Todolist_constraint type, " ++ string ++ " try re-running the @dillonkearns/elm-graphql CLI ")
+                        Decode.fail ("Invalid Todos_constraint type, " ++ string ++ " try re-running the @dillonkearns/elm-graphql CLI ")
             )
 
 
 {-| Convert from the union type representating the Enum to a string that the GraphQL server will recognize.
 -}
-toString : Todolist_constraint -> String
+toString : Todos_constraint -> String
 toString enum =
     case enum of
-        Todolist_pkey ->
-            "todolist_pkey"
+        Todos_pkey ->
+            "todos_pkey"
 
 
 {-| Convert from a String representation to an elm representation enum.
@@ -55,11 +55,11 @@ This is the inverse of the Enum `toString` function. So you can call `toString` 
 This can be useful for generating Strings to use for <select> menus to check which item was selected.
 
 -}
-fromString : String -> Maybe Todolist_constraint
+fromString : String -> Maybe Todos_constraint
 fromString enumString =
     case enumString of
-        "todolist_pkey" ->
-            Just Todolist_pkey
+        "todos_pkey" ->
+            Just Todos_pkey
 
         _ ->
             Nothing

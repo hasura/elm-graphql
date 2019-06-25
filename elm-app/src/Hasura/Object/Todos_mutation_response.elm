@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Hasura.Object.Users_variance_fields exposing (id)
+module Hasura.Object.Todos_mutation_response exposing (affected_rows, returning)
 
 import Graphql.Internal.Builder.Argument as Argument exposing (Argument)
 import Graphql.Internal.Builder.Object as Object
@@ -19,6 +19,15 @@ import Hasura.Union
 import Json.Decode as Decode
 
 
-id : SelectionSet (Maybe Float) Hasura.Object.Users_variance_fields
-id =
-    Object.selectionForField "(Maybe Float)" "id" [] (Decode.float |> Decode.nullable)
+{-| number of affected rows by the mutation
+-}
+affected_rows : SelectionSet Int Hasura.Object.Todos_mutation_response
+affected_rows =
+    Object.selectionForField "Int" "affected_rows" [] Decode.int
+
+
+{-| data of the affected rows by the mutation
+-}
+returning : SelectionSet decodesTo Hasura.Object.Todos -> SelectionSet (List decodesTo) Hasura.Object.Todos_mutation_response
+returning object_ =
+    Object.selectionForCompositeField "returning" [] object_ (identity >> Decode.list)

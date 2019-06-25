@@ -9,26 +9,16 @@ import Json.Decode as Decode exposing (Decoder)
 
 {-| update columns of table "users"
 
-  - Created\_at - column name
-  - Id - column name
   - Last\_seen - column name
-  - Password - column name
-  - Token - column name
-  - Username - column name
 
 -}
 type Users_update_column
-    = Created_at
-    | Id
-    | Last_seen
-    | Password
-    | Token
-    | Username
+    = Last_seen
 
 
 list : List Users_update_column
 list =
-    [ Created_at, Id, Last_seen, Password, Token, Username ]
+    [ Last_seen ]
 
 
 decoder : Decoder Users_update_column
@@ -37,23 +27,8 @@ decoder =
         |> Decode.andThen
             (\string ->
                 case string of
-                    "created_at" ->
-                        Decode.succeed Created_at
-
-                    "id" ->
-                        Decode.succeed Id
-
                     "last_seen" ->
                         Decode.succeed Last_seen
-
-                    "password" ->
-                        Decode.succeed Password
-
-                    "token" ->
-                        Decode.succeed Token
-
-                    "username" ->
-                        Decode.succeed Username
 
                     _ ->
                         Decode.fail ("Invalid Users_update_column type, " ++ string ++ " try re-running the @dillonkearns/elm-graphql CLI ")
@@ -65,23 +40,8 @@ decoder =
 toString : Users_update_column -> String
 toString enum =
     case enum of
-        Created_at ->
-            "created_at"
-
-        Id ->
-            "id"
-
         Last_seen ->
             "last_seen"
-
-        Password ->
-            "password"
-
-        Token ->
-            "token"
-
-        Username ->
-            "username"
 
 
 {-| Convert from a String representation to an elm representation enum.
@@ -98,23 +58,8 @@ This can be useful for generating Strings to use for <select> menus to check whi
 fromString : String -> Maybe Users_update_column
 fromString enumString =
     case enumString of
-        "created_at" ->
-            Just Created_at
-
-        "id" ->
-            Just Id
-
         "last_seen" ->
             Just Last_seen
-
-        "password" ->
-            Just Password
-
-        "token" ->
-            Just Token
-
-        "username" ->
-            Just Username
 
         _ ->
             Nothing

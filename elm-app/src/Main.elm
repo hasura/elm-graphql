@@ -18,38 +18,38 @@ import Hasura.InputObject
     exposing
         ( Boolean_comparison_exp
         , Integer_comparison_exp
-        , Todolist_bool_exp
-        , Todolist_insert_input
-        , Todolist_set_input
+        , Todos_bool_exp
+        , Todos_insert_input
+        , Todos_set_input
         , Users_set_input
         , buildBoolean_comparison_exp
         , buildInteger_comparison_exp
-        , buildTodolist_bool_exp
-        , buildTodolist_insert_input
-        , buildTodolist_order_by
-        , buildTodolist_set_input
+        , buildTodos_bool_exp
+        , buildTodos_insert_input
+        , buildTodos_order_by
+        , buildTodos_set_input
         , buildUsers_bool_exp
         , buildUsers_set_input
         )
 import Hasura.Mutation as Mutation
     exposing
-        ( DeleteTodolistRequiredArguments
-        , InsertTodolistRequiredArguments
-        , UpdateTodolistOptionalArguments
-        , UpdateTodolistRequiredArguments
+        ( DeleteTodosRequiredArguments
+        , InsertTodosRequiredArguments
+        , UpdateTodosOptionalArguments
+        , UpdateTodosRequiredArguments
         , UpdateUsersOptionalArguments
         , UpdateUsersRequiredArguments
-        , insert_todolist
+        , insert_todos
         )
 import Hasura.Object
 import Hasura.Object.Online_users as OnlineUser
-import Hasura.Object.Todolist as Todolist
-import Hasura.Object.Todolist_mutation_response as TodolistMutation
+import Hasura.Object.Todos as Todos
+import Hasura.Object.Todos_mutation_response as TodosMutation
 import Hasura.Object.Users as Users
 import Hasura.Object.Users_mutation_response as UsersMutation
 import Hasura.Query as Query
 import Hasura.Scalar as Timestamptz exposing (Timestamptz(..))
-import Hasura.Subscription as Subscription exposing (TodolistOptionalArguments)
+import Hasura.Subscription as Subscription exposing (TodosOptionalArguments)
 import Html exposing (Html, a, button, div, form, h1, i, img, input, label, li, nav, p, span, text, ul)
 import Html.Attributes
     exposing
@@ -103,12 +103,12 @@ failMsg =
 
 signup_url : String
 signup_url =
-    "https://guarded-woodland-47581.herokuapp.com/signup"
+    "https://learn.hasura.io/auth/signup"
 
 
 login_url : String
 login_url =
-    "https://guarded-woodland-47581.herokuapp.com/login"
+    "https://learn.hasura.io/auth/login"
 
 
 
@@ -153,9 +153,9 @@ type alias UserInfo =
 
 type alias Todo =
     { id : Int
-    , user_id : Int
+    , user_id : String
     , is_completed : Bool
-    , task : String
+    , title : String
     }
 
 
@@ -168,8 +168,8 @@ type alias OnlineUsers =
 
 
 type alias OnlineUser =
-    { id : Maybe Int
-    , username : Maybe String
+    { id : Maybe String
+    , user : Maybe User
     }
 
 
@@ -206,20 +206,20 @@ type alias SignupResponseParser =
 
 
 type alias SignupResponseData =
-    { id : Int, username : String }
+    { id : String }
 
 
 type alias TodoWUser =
     { id : Int
-    , user_id : Int
+    , user_id : String
     , is_completed : Bool
-    , task : String
+    , title : String
     , user : User
     }
 
 
 type alias User =
-    { username : String
+    { name : String
     }
 
 
@@ -378,9 +378,9 @@ retrieveGraphQLResponseBody (GraphQLResponse value) =
 -}
 
 
-orderByCreatedAt : Order_by -> OptionalArgument (List Hasura.InputObject.Todolist_order_by)
+orderByCreatedAt : Order_by -> OptionalArgument (List Hasura.InputObject.Todos_order_by)
 orderByCreatedAt order =
-    Present <| [ buildTodolist_order_by (\args -> { args | created_at = OptionalArgument.Present order }) ]
+    Present <| [ buildTodos_order_by (\args -> { args | created_at = OptionalArgument.Present order }) ]
 
 
 equalToBoolean : Bool -> OptionalArgument Hasura.InputObject.Boolean_comparison_exp
@@ -388,19 +388,19 @@ equalToBoolean isPublic =
     Present <| buildBoolean_comparison_exp (\args -> { args | eq_ = OptionalArgument.Present isPublic })
 
 
-whereIsPublic : Bool -> OptionalArgument Hasura.InputObject.Todolist_bool_exp
+whereIsPublic : Bool -> OptionalArgument Hasura.InputObject.Todos_bool_exp
 whereIsPublic isPublic =
-    Present <| buildTodolist_bool_exp (\args -> { args | is_public = equalToBoolean isPublic })
+    Present <| buildTodos_bool_exp (\args -> { args | is_public = equalToBoolean isPublic })
 
 
-todoListSubscriptionOptionalArgument : TodolistOptionalArguments -> TodolistOptionalArguments
+todoListSubscriptionOptionalArgument : TodosOptionalArguments -> TodosOptionalArguments
 todoListSubscriptionOptionalArgument optionalArgs =
     { optionalArgs | where_ = whereIsPublic False, order_by = orderByCreatedAt Desc }
 
 
 fetchPrivateTodosQuery : SelectionSet Todos RootQuery
 fetchPrivateTodosQuery =
-    Query.todolist todoListSubscriptionOptionalArgument todoListSelection
+    Query.todos todoListSubscriptionOptionalArgument todoListSelection
 
 
 fetchPrivateTodos : String -> Cmd Msg
@@ -425,32 +425,32 @@ onlineUsersSelection : SelectionSet OnlineUser Hasura.Object.Online_users
 onlineUsersSelection =
     SelectionSet.map2 OnlineUser
         OnlineUser.id
-        OnlineUser.username
+        (OnlineUser.user selectUser)
 
 
 
 {-
-   Subscription query to fetch recent todolist
+   Subscription query to fetch recent todos
 -}
 
 
-publicTodoListSubscriptionOptionalArgument : TodolistOptionalArguments -> TodolistOptionalArguments
+publicTodoListSubscriptionOptionalArgument : TodosOptionalArguments -> TodosOptionalArguments
 publicTodoListSubscriptionOptionalArgument optionalArgs =
     { optionalArgs | where_ = whereIsPublic True, order_by = orderByCreatedAt Desc, limit = OptionalArgument.Present 1 }
 
 
 publicListSubscription : SelectionSet Todos RootSubscription
 publicListSubscription =
-    Subscription.todolist publicTodoListSubscriptionOptionalArgument todoListSelection
+    Subscription.todos publicTodoListSubscriptionOptionalArgument todoListSelection
 
 
-todoListSelection : SelectionSet Todo Hasura.Object.Todolist
+todoListSelection : SelectionSet Todo Hasura.Object.Todos
 todoListSelection =
     SelectionSet.map4 Todo
-        Todolist.id
-        Todolist.user_id
-        Todolist.is_completed
-        Todolist.task
+        Todos.id
+        Todos.user_id
+        Todos.is_completed
+        Todos.title
 
 
 
@@ -476,10 +476,10 @@ lteLastTodoId id =
         )
 
 
-publicTodoListOffsetWhere : Int -> OptionalArgument Todolist_bool_exp
+publicTodoListOffsetWhere : Int -> OptionalArgument Todos_bool_exp
 publicTodoListOffsetWhere id =
     Present
-        (buildTodolist_bool_exp
+        (buildTodos_bool_exp
             (\args ->
                 { args
                     | id = lteLastTodoId id
@@ -511,7 +511,7 @@ publicTodoListOffsetWhere id =
 -}
 
 
-publicTodoListQueryOptionalArgs : Int -> Int -> TodolistOptionalArguments -> TodolistOptionalArguments
+publicTodoListQueryOptionalArgs : Int -> Int -> TodosOptionalArguments -> TodosOptionalArguments
 publicTodoListQueryOptionalArgs id limit optionalArgs =
     { optionalArgs | where_ = publicTodoListOffsetWhere id, order_by = orderByCreatedAt Desc, limit = publicTodoListQueryLimit limit }
 
@@ -519,22 +519,22 @@ publicTodoListQueryOptionalArgs id limit optionalArgs =
 selectUser : SelectionSet User Hasura.Object.Users
 selectUser =
     SelectionSet.map User
-        Users.username
+        Users.name
 
 
-todoListSelectionWithUser : SelectionSet TodoWUser Hasura.Object.Todolist
+todoListSelectionWithUser : SelectionSet TodoWUser Hasura.Object.Todos
 todoListSelectionWithUser =
     SelectionSet.map5 TodoWUser
-        Todolist.id
-        Todolist.user_id
-        Todolist.is_completed
-        Todolist.task
-        (Todolist.user selectUser)
+        Todos.id
+        Todos.user_id
+        Todos.is_completed
+        Todos.title
+        (Todos.user selectUser)
 
 
 loadPublicTodoList : Int -> SelectionSet TodosWUser RootQuery
 loadPublicTodoList id =
-    Query.todolist (publicTodoListQueryOptionalArgs id 7) todoListSelectionWithUser
+    Query.todos (publicTodoListQueryOptionalArgs id 7) todoListSelectionWithUser
 
 
 
@@ -574,10 +574,10 @@ gtLastTodoId id =
         )
 
 
-newPublicTodosWhere : Int -> OptionalArgument Todolist_bool_exp
+newPublicTodosWhere : Int -> OptionalArgument Todos_bool_exp
 newPublicTodosWhere id =
     Present
-        (buildTodolist_bool_exp
+        (buildTodos_bool_exp
             (\args ->
                 { args
                     | id = gtLastTodoId id
@@ -608,14 +608,14 @@ newPublicTodosWhere id =
 -}
 
 
-newPublicTodoListQueryOptionalArgs : Int -> TodolistOptionalArguments -> TodolistOptionalArguments
+newPublicTodoListQueryOptionalArgs : Int -> TodosOptionalArguments -> TodosOptionalArguments
 newPublicTodoListQueryOptionalArgs id optionalArgs =
     { optionalArgs | where_ = newPublicTodosWhere id, order_by = orderByCreatedAt Desc }
 
 
 newTodoQuery : Int -> SelectionSet TodosWUser RootQuery
 newTodoQuery id =
-    Query.todolist (newPublicTodoListQueryOptionalArgs id) todoListSelectionWithUser
+    Query.todos (newPublicTodoListQueryOptionalArgs id) todoListSelectionWithUser
 
 
 loadNewTodos : SelectionSet TodosWUser RootQuery -> String -> Cmd Msg
@@ -635,10 +635,10 @@ ltLastTodoId id =
         )
 
 
-oldPublicTodosWhere : Int -> OptionalArgument Todolist_bool_exp
+oldPublicTodosWhere : Int -> OptionalArgument Todos_bool_exp
 oldPublicTodosWhere id =
     Present
-        (buildTodolist_bool_exp
+        (buildTodos_bool_exp
             (\args ->
                 { args
                     | id = ltLastTodoId id
@@ -648,14 +648,14 @@ oldPublicTodosWhere id =
         )
 
 
-oldPublicTodoListQueryOptionalArgs : Int -> TodolistOptionalArguments -> TodolistOptionalArguments
+oldPublicTodoListQueryOptionalArgs : Int -> TodosOptionalArguments -> TodosOptionalArguments
 oldPublicTodoListQueryOptionalArgs id optionalArgs =
     { optionalArgs | where_ = oldPublicTodosWhere id, order_by = orderByCreatedAt Desc, limit = OptionalArgument.Present 7 }
 
 
 oldTodoQuery : Int -> SelectionSet TodosWUser RootQuery
 oldTodoQuery id =
-    Query.todolist (oldPublicTodoListQueryOptionalArgs id) todoListSelectionWithUser
+    Query.todos (oldPublicTodoListQueryOptionalArgs id) todoListSelectionWithUser
 
 
 loadOldTodos : SelectionSet TodosWUser RootQuery -> String -> Cmd Msg
@@ -665,34 +665,34 @@ loadOldTodos q authToken =
 
 
 {-
-   Insert into todolist table
+   Insert into todos table
 -}
 
 
-insertTodoObjects : String -> Todolist_insert_input
+insertTodoObjects : String -> Todos_insert_input
 insertTodoObjects newTodo =
-    buildTodolist_insert_input
+    buildTodos_insert_input
         (\args ->
             { args
-                | task = Present newTodo
+                | title = Present newTodo
             }
         )
 
 
-insertArgs : String -> InsertTodolistRequiredArguments
+insertArgs : String -> InsertTodosRequiredArguments
 insertArgs newTodo =
-    InsertTodolistRequiredArguments [ insertTodoObjects newTodo ]
+    InsertTodosRequiredArguments [ insertTodoObjects newTodo ]
 
 
 getTodoListInsertObject : String -> SelectionSet (Maybe MutationResponse) RootMutation
 getTodoListInsertObject newTodo =
-    insert_todolist identity (insertArgs newTodo) mutationResponseSelection
+    insert_todos identity (insertArgs newTodo) mutationResponseSelection
 
 
-mutationResponseSelection : SelectionSet MutationResponse Hasura.Object.Todolist_mutation_response
+mutationResponseSelection : SelectionSet MutationResponse Hasura.Object.Todos_mutation_response
 mutationResponseSelection =
     SelectionSet.map MutationResponse
-        TodolistMutation.affected_rows
+        TodosMutation.affected_rows
 
 
 makeMutation : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
@@ -702,35 +702,35 @@ makeMutation mutation authToken =
 
 
 {-
-   Insert into public todolist
+   Insert into public todos
 -}
 
 
 getPublicTodoInsertObj : String -> SelectionSet (Maybe MutationResponse) RootMutation
 getPublicTodoInsertObj newPublicTodo =
-    Mutation.insert_todolist identity (insertPublicTodoArgs newPublicTodo) publicTodoMutateResponseSelection
+    Mutation.insert_todos identity (insertPublicTodoArgs newPublicTodo) publicTodoMutateResponseSelection
 
 
-insertPublicTodoObjects : String -> Todolist_insert_input
+insertPublicTodoObjects : String -> Todos_insert_input
 insertPublicTodoObjects newPublicTodo =
-    buildTodolist_insert_input
+    buildTodos_insert_input
         (\args ->
             { args
-                | task = Present newPublicTodo
+                | title = Present newPublicTodo
                 , is_public = Present True
             }
         )
 
 
-insertPublicTodoArgs : String -> InsertTodolistRequiredArguments
+insertPublicTodoArgs : String -> InsertTodosRequiredArguments
 insertPublicTodoArgs newPublicTodo =
-    InsertTodolistRequiredArguments [ insertPublicTodoObjects newPublicTodo ]
+    InsertTodosRequiredArguments [ insertPublicTodoObjects newPublicTodo ]
 
 
-publicTodoMutateResponseSelection : SelectionSet MutationResponse Hasura.Object.Todolist_mutation_response
+publicTodoMutateResponseSelection : SelectionSet MutationResponse Hasura.Object.Todos_mutation_response
 publicTodoMutateResponseSelection =
     SelectionSet.map MutationResponse
-        TodolistMutation.affected_rows
+        TodosMutation.affected_rows
 
 
 insertPublicTodo : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
@@ -797,12 +797,12 @@ updateLastSeen authToken updateQuery =
 
 updateTodoStatus : Int -> Bool -> SelectionSet (Maybe MutationResponse) RootMutation
 updateTodoStatus todoId status =
-    Mutation.update_todolist (setTodoListUpdateArgs status) (setTodoListUpdateWhere todoId) mutationResponseSelection
+    Mutation.update_todos (setTodoListUpdateArgs status) (setTodoListUpdateWhere todoId) mutationResponseSelection
 
 
-setTodoListSetArg : Bool -> Todolist_set_input
+setTodoListSetArg : Bool -> Todos_set_input
 setTodoListSetArg status =
-    buildTodolist_set_input
+    buildTodos_set_input
         (\args ->
             { args
                 | is_completed = OptionalArgument.Present status
@@ -810,7 +810,7 @@ setTodoListSetArg status =
         )
 
 
-setTodoListUpdateArgs : Bool -> UpdateTodolistOptionalArguments -> UpdateTodolistOptionalArguments
+setTodoListUpdateArgs : Bool -> UpdateTodosOptionalArguments -> UpdateTodosOptionalArguments
 setTodoListUpdateArgs status optionalArgs =
     { optionalArgs
         | set_ = Present (setTodoListSetArg status)
@@ -827,10 +827,10 @@ setTodoListValueForId todoId =
         )
 
 
-setTodoListUpdateWhere : Int -> UpdateTodolistRequiredArguments
+setTodoListUpdateWhere : Int -> UpdateTodosRequiredArguments
 setTodoListUpdateWhere todoId =
-    UpdateTodolistRequiredArguments
-        (buildTodolist_bool_exp
+    UpdateTodosRequiredArguments
+        (buildTodos_bool_exp
             (\args ->
                 { args
                     | id = Present (setTodoListValueForId todoId)
@@ -855,13 +855,13 @@ updateTodoList mutation authToken =
 
 deleteSingleTodo : Int -> SelectionSet (Maybe MutationResponse) RootMutation
 deleteSingleTodo todoId =
-    Mutation.delete_todolist (setTodoListDeleteWhere todoId) mutationResponseSelection
+    Mutation.delete_todos (setTodoListDeleteWhere todoId) mutationResponseSelection
 
 
-setTodoListDeleteWhere : Int -> DeleteTodolistRequiredArguments
+setTodoListDeleteWhere : Int -> DeleteTodosRequiredArguments
 setTodoListDeleteWhere todoId =
-    DeleteTodolistRequiredArguments
-        (buildTodolist_bool_exp
+    DeleteTodosRequiredArguments
+        (buildTodos_bool_exp
             (\args ->
                 { args
                     | id = Present (setTodoListValueForId todoId)
@@ -870,10 +870,10 @@ setTodoListDeleteWhere todoId =
         )
 
 
-delResponseSelection : SelectionSet MutationResponse Hasura.Object.Todolist_mutation_response
+delResponseSelection : SelectionSet MutationResponse Hasura.Object.Todos_mutation_response
 delResponseSelection =
     SelectionSet.map MutationResponse
-        TodolistMutation.affected_rows
+        TodosMutation.affected_rows
 
 
 deleteSingleTodoItem : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
@@ -892,7 +892,7 @@ deleteSingleTodoItem mutation authToken =
 
 deleteAllCompletedTodo : SelectionSet (Maybe MutationResponse) RootMutation
 deleteAllCompletedTodo =
-    Mutation.delete_todolist (setTodoListDeleteAllCompletedWhere True) mutationResponseSelection
+    Mutation.delete_todos (setTodoListDeleteAllCompletedWhere True) mutationResponseSelection
 
 
 setTodoListValueForTodoStatus : Bool -> Boolean_comparison_exp
@@ -905,10 +905,10 @@ setTodoListValueForTodoStatus status =
         )
 
 
-setTodoListDeleteAllCompletedWhere : Bool -> DeleteTodolistRequiredArguments
+setTodoListDeleteAllCompletedWhere : Bool -> DeleteTodosRequiredArguments
 setTodoListDeleteAllCompletedWhere status =
-    DeleteTodolistRequiredArguments
-        (buildTodolist_bool_exp
+    DeleteTodosRequiredArguments
+        (buildTodos_bool_exp
             (\args ->
                 { args
                     | is_completed = Present (setTodoListValueForTodoStatus status)
@@ -917,10 +917,10 @@ setTodoListDeleteAllCompletedWhere status =
         )
 
 
-delAllResponseSelection : SelectionSet MutationResponse Hasura.Object.Todolist_mutation_response
+delAllResponseSelection : SelectionSet MutationResponse Hasura.Object.Todos_mutation_response
 delAllResponseSelection =
     SelectionSet.map MutationResponse
-        TodolistMutation.affected_rows
+        TodosMutation.affected_rows
 
 
 deleteAllCompletedItems : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
@@ -1019,9 +1019,8 @@ signupDataEncoder authData =
 
 decodeSignup : Decoder SignupResponseData
 decodeSignup =
-    Json.Decode.map2 SignupResponseData
-        (field "id" int)
-        (field "username" string)
+    Json.Decode.map SignupResponseData
+        (field "id" string)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -1319,8 +1318,8 @@ update msg model =
         EnteredPassword password ->
             updateAuthData (\authData -> { authData | password = password }) model Cmd.none
 
-        EnteredUsername username ->
-            updateAuthData (\authData -> { authData | username = username }) model Cmd.none
+        EnteredUsername name ->
+            updateAuthData (\authData -> { authData | username = name }) model Cmd.none
 
 
 updatePrivateData : (PrivateTodo -> PrivateTodo) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
@@ -1362,7 +1361,7 @@ viewListItem todo =
                 , ( "completed", todo.is_completed )
                 ]
             ]
-            [ div [] [ text todo.task ]
+            [ div [] [ text todo.title ]
             ]
         , button [ class "closeBtn", onClick (DelTodo todo.id) ]
             [ text "x"
@@ -1563,10 +1562,10 @@ publicTodoListWrapper publicTodoInfo =
 publicViewListItem : TodoWUser -> Html Msg
 publicViewListItem todo =
     li []
-        [ div [ class "userInfoPublic", title (String.fromInt todo.user_id) ]
-            [ text ("@" ++ todo.user.username)
+        [ div [ class "userInfoPublic", title todo.user_id ]
+            [ text ("@" ++ todo.user.name)
             ]
-        , div [ class "labelContent" ] [ text todo.task ]
+        , div [ class "labelContent" ] [ text todo.title ]
         ]
 
 
@@ -1689,7 +1688,7 @@ loginView authData isRequestInProgress reqErr isSignupSuccess =
                     [ authenticationToggler "Register?" "#register" Signup
                     ]
                 , form []
-                    [ textInput authData.username "Username" EnteredUsername
+                    [ textInput authData.username "Email" EnteredUsername
                     , passwordInput authData.password EnteredPassword
                     , actionButton "Sign in" isRequestInProgress MakeLoginRequest
                     , div [ class "error_auth_response" ] <|
@@ -1717,7 +1716,7 @@ signupView authData isRequestInProgress reqErr =
                     [ authenticationToggler "Login?" "#login" Login
                     ]
                 , form []
-                    [ textInput authData.username "Username" EnteredUsername
+                    [ textInput authData.username "Email" EnteredUsername
                     , passwordInput authData.password EnteredPassword
                     , actionButton "Sign up" isRequestInProgress MakeSignupRequest
                     , text reqErr
@@ -1770,8 +1769,8 @@ topNavBar =
                     [ li []
                         [ a []
                             [ button
-                                [ class "btn-primary", onClick ClearAuthToken ]
-                                [ text "Logout" ]
+                                [ class "btn btn-primary", onClick ClearAuthToken ]
+                                [ text "Log Out" ]
                             ]
                         ]
                     ]
@@ -1812,9 +1811,9 @@ viewUserName str =
 
 viewOnlineUser : OnlineUser -> Html msg
 viewOnlineUser onlineUser =
-    case onlineUser.username of
-        Just username ->
-            viewUserName username
+    case onlineUser.user of
+        Just user ->
+            viewUserName user.name
 
         Nothing ->
             text ""

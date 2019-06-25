@@ -9,9 +9,11 @@
   height: inherit;
 }
 body {
-  font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande', 'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;
+  /* font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande', 'Bitstream Vera Sans', 'Helvetica Neue', sans-serif; */
   margin: 0;
   color: #293c4b;
+  background-color: #f7f7f7;
+  font-family: sans-serif;
 }
 
 .content {
@@ -99,6 +101,10 @@ img {
 .userInfo .userImg {
   text-align: center;
   padding-right: 10px;
+}
+
+.userInfo .userImg i {
+  font-size: 20px;
 }
 
 .todoWrapper {
@@ -372,7 +378,6 @@ img {
 .navHeader button {
   padding: 3.75px 7.5px;
   font-size: 14px;
-  border: none;
 }
 
 .signup_success {

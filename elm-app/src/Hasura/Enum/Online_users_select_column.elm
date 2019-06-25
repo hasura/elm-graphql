@@ -11,18 +11,16 @@ import Json.Decode as Decode exposing (Decoder)
 
   - Id - column name
   - Last\_seen - column name
-  - Username - column name
 
 -}
 type Online_users_select_column
     = Id
     | Last_seen
-    | Username
 
 
 list : List Online_users_select_column
 list =
-    [ Id, Last_seen, Username ]
+    [ Id, Last_seen ]
 
 
 decoder : Decoder Online_users_select_column
@@ -36,9 +34,6 @@ decoder =
 
                     "last_seen" ->
                         Decode.succeed Last_seen
-
-                    "username" ->
-                        Decode.succeed Username
 
                     _ ->
                         Decode.fail ("Invalid Online_users_select_column type, " ++ string ++ " try re-running the @dillonkearns/elm-graphql CLI ")
@@ -55,9 +50,6 @@ toString enum =
 
         Last_seen ->
             "last_seen"
-
-        Username ->
-            "username"
 
 
 {-| Convert from a String representation to an elm representation enum.
@@ -79,9 +71,6 @@ fromString enumString =
 
         "last_seen" ->
             Just Last_seen
-
-        "username" ->
-            Just Username
 
         _ ->
             Nothing

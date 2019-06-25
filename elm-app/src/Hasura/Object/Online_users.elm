@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Hasura.Object.Online_users exposing (id, last_seen, username)
+module Hasura.Object.Online_users exposing (id, last_seen, user)
 
 import Graphql.Internal.Builder.Argument as Argument exposing (Argument)
 import Graphql.Internal.Builder.Object as Object
@@ -19,9 +19,9 @@ import Hasura.Union
 import Json.Decode as Decode
 
 
-id : SelectionSet (Maybe Int) Hasura.Object.Online_users
+id : SelectionSet (Maybe String) Hasura.Object.Online_users
 id =
-    Object.selectionForField "(Maybe Int)" "id" [] (Decode.int |> Decode.nullable)
+    Object.selectionForField "(Maybe String)" "id" [] (Decode.string |> Decode.nullable)
 
 
 last_seen : SelectionSet (Maybe Hasura.ScalarCodecs.Timestamptz) Hasura.Object.Online_users
@@ -29,6 +29,8 @@ last_seen =
     Object.selectionForField "(Maybe ScalarCodecs.Timestamptz)" "last_seen" [] (Hasura.ScalarCodecs.codecs |> Hasura.Scalar.unwrapCodecs |> .codecTimestamptz |> .decoder |> Decode.nullable)
 
 
-username : SelectionSet (Maybe String) Hasura.Object.Online_users
-username =
-    Object.selectionForField "(Maybe String)" "username" [] (Decode.string |> Decode.nullable)
+{-| An object relationship
+-}
+user : SelectionSet decodesTo Hasura.Object.Users -> SelectionSet (Maybe decodesTo) Hasura.Object.Online_users
+user object_ =
+    Object.selectionForCompositeField "user" [] object_ (identity >> Decode.nullable)

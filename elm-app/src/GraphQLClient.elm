@@ -13,7 +13,7 @@ import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 
 graphql_url : String
 graphql_url =
-    "https://todo-mvc-elm-backend1.herokuapp.com/v1alpha1/graphql"
+    "https://learn.hasura.io/graphql"
 
 
 getAuthHeader : String -> (Graphql.Http.Request decodesTo -> Graphql.Http.Request decodesTo)

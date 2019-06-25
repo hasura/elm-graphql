@@ -2,54 +2,54 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Hasura.Enum.Users_select_column exposing (Users_select_column(..), decoder, fromString, list, toString)
+module Hasura.Enum.Todos_update_column exposing (Todos_update_column(..), decoder, fromString, list, toString)
 
 import Json.Decode as Decode exposing (Decoder)
 
 
-{-| select columns of table "users"
+{-| update columns of table "todos"
 
-  - Id - column name
-  - Name - column name
+  - Is\_completed - column name
+  - Title - column name
 
 -}
-type Users_select_column
-    = Id
-    | Name
+type Todos_update_column
+    = Is_completed
+    | Title
 
 
-list : List Users_select_column
+list : List Todos_update_column
 list =
-    [ Id, Name ]
+    [ Is_completed, Title ]
 
 
-decoder : Decoder Users_select_column
+decoder : Decoder Todos_update_column
 decoder =
     Decode.string
         |> Decode.andThen
             (\string ->
                 case string of
-                    "id" ->
-                        Decode.succeed Id
+                    "is_completed" ->
+                        Decode.succeed Is_completed
 
-                    "name" ->
-                        Decode.succeed Name
+                    "title" ->
+                        Decode.succeed Title
 
                     _ ->
-                        Decode.fail ("Invalid Users_select_column type, " ++ string ++ " try re-running the @dillonkearns/elm-graphql CLI ")
+                        Decode.fail ("Invalid Todos_update_column type, " ++ string ++ " try re-running the @dillonkearns/elm-graphql CLI ")
             )
 
 
 {-| Convert from the union type representating the Enum to a string that the GraphQL server will recognize.
 -}
-toString : Users_select_column -> String
+toString : Todos_update_column -> String
 toString enum =
     case enum of
-        Id ->
-            "id"
+        Is_completed ->
+            "is_completed"
 
-        Name ->
-            "name"
+        Title ->
+            "title"
 
 
 {-| Convert from a String representation to an elm representation enum.
@@ -63,14 +63,14 @@ This is the inverse of the Enum `toString` function. So you can call `toString` 
 This can be useful for generating Strings to use for <select> menus to check which item was selected.
 
 -}
-fromString : String -> Maybe Users_select_column
+fromString : String -> Maybe Todos_update_column
 fromString enumString =
     case enumString of
-        "id" ->
-            Just Id
+        "is_completed" ->
+            Just Is_completed
 
-        "name" ->
-            Just Name
+        "title" ->
+            Just Title
 
         _ ->
             Nothing

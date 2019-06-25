@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Hasura.Object.Todolist exposing (created_at, id, is_completed, is_public, task, user, user_id)
+module Hasura.Object.Todos exposing (created_at, id, is_completed, is_public, title, user, user_id)
 
 import Graphql.Internal.Builder.Argument as Argument exposing (Argument)
 import Graphql.Internal.Builder.Object as Object
@@ -19,38 +19,38 @@ import Hasura.Union
 import Json.Decode as Decode
 
 
-created_at : SelectionSet Hasura.ScalarCodecs.Timestamptz Hasura.Object.Todolist
+created_at : SelectionSet Hasura.ScalarCodecs.Timestamptz Hasura.Object.Todos
 created_at =
     Object.selectionForField "ScalarCodecs.Timestamptz" "created_at" [] (Hasura.ScalarCodecs.codecs |> Hasura.Scalar.unwrapCodecs |> .codecTimestamptz |> .decoder)
 
 
-id : SelectionSet Int Hasura.Object.Todolist
+id : SelectionSet Int Hasura.Object.Todos
 id =
     Object.selectionForField "Int" "id" [] Decode.int
 
 
-is_completed : SelectionSet Bool Hasura.Object.Todolist
+is_completed : SelectionSet Bool Hasura.Object.Todos
 is_completed =
     Object.selectionForField "Bool" "is_completed" [] Decode.bool
 
 
-is_public : SelectionSet Bool Hasura.Object.Todolist
+is_public : SelectionSet Bool Hasura.Object.Todos
 is_public =
     Object.selectionForField "Bool" "is_public" [] Decode.bool
 
 
-task : SelectionSet String Hasura.Object.Todolist
-task =
-    Object.selectionForField "String" "task" [] Decode.string
+title : SelectionSet String Hasura.Object.Todos
+title =
+    Object.selectionForField "String" "title" [] Decode.string
 
 
 {-| An object relationship
 -}
-user : SelectionSet decodesTo Hasura.Object.Users -> SelectionSet decodesTo Hasura.Object.Todolist
+user : SelectionSet decodesTo Hasura.Object.Users -> SelectionSet decodesTo Hasura.Object.Todos
 user object_ =
     Object.selectionForCompositeField "user" [] object_ identity
 
 
-user_id : SelectionSet Int Hasura.Object.Todolist
+user_id : SelectionSet String Hasura.Object.Todos
 user_id =
-    Object.selectionForField "Int" "user_id" [] Decode.int
+    Object.selectionForField "String" "user_id" [] Decode.string
