@@ -1044,7 +1044,7 @@ update msg model =
         GotLoginResponse data ->
             case data of
                 RemoteData.Success d ->
-                    updateAuthData (\authData -> { authData | authToken = d.token }) model (getInitialEvent d.token)
+                    updateAuthAndFormData (\authForm -> { authForm | isRequestInProgress = False, isSignupSuccess = False }) (\authData -> { authData | authToken = d.token }) model (getInitialEvent d.token)
 
                 RemoteData.Failure err ->
                     updateAuthFormData (\authForm -> { authForm | isRequestInProgress = False, requestError = "Unable to authenticate you" }) model Cmd.none
@@ -1325,6 +1325,11 @@ update msg model =
 updatePrivateData : (PrivateTodo -> PrivateTodo) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
 updatePrivateData transform model cmd =
     ( { model | privateData = transform model.privateData }, cmd )
+
+
+updateAuthAndFormData : (AuthForm -> AuthForm) -> (AuthData -> AuthData) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
+updateAuthAndFormData transformForm transform model cmd =
+    ( { model | authData = transform model.authData, authForm = transformForm model.authForm }, cmd )
 
 
 updateAuthData : (AuthData -> AuthData) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
