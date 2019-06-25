@@ -23,7 +23,6 @@ const config = {
     		"/elm-graphql",
     		"/queries",
     		"/mutations-variables",
-    		"/optimistic-update-mutations",
     		"/subscriptions",
     		"/realtime-feed",
     		"/what-next"
