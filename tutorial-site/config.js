@@ -20,7 +20,7 @@ const config = {
 			"/introduction",
     		"/intro-to-graphql",
     		"/setup",
-    		"/apollo-client",
+    		"/elm-graphql",
     		"/queries",
     		"/mutations-variables",
     		"/optimistic-update-mutations",

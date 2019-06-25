@@ -23,16 +23,7 @@
   ],
   "author": "Karthik V",
   "license": "ISC",
-  "dependencies": {
-    "@dillonkearns/elm-graphql": "^3.4.0",
-    "apollo-cache-inmemory": "^1.5.1",
-    "apollo-client": "^2.5.1",
-    "apollo-link-http": "^1.5.14",
-    "apollo-link-ws": "^1.0.17",
-    "graphql": "^14.2.1",
-    "graphql-tag": "^2.10.1",
-    "subscriptions-transport-ws": "^0.9.16"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@babel/cli": "7.2.3",
     "@babel/core": "7.3.4",
@@ -76,6 +67,6 @@
     "whatwg-fetch": "2.0.4"
   },
   "now": {
-    "alias": "https://build-cbstuzdlue.now.sh/"
+    "alias": ""
   }
 }
