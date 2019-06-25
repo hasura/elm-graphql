@@ -9,7 +9,6 @@ import Browser
 import GraphQLClient exposing (makeGraphQLMutation, makeGraphQLQuery)
 import Graphql.Document
 import Graphql.Http
-import Graphql.Http.GraphqlError as GraphqlError exposing (GraphqlError)
 import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
 import Graphql.OptionalArgument as OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet, hardcoded)
@@ -47,7 +46,7 @@ import Hasura.Object.Todos as Todos
 import Hasura.Object.Todos_mutation_response as TodosMutation
 import Hasura.Object.Users as Users
 import Hasura.Object.Users_mutation_response as UsersMutation
-import Hasura.Query as Query
+import Hasura.Query as Query exposing (TodosOptionalArguments)
 import Hasura.Scalar as Timestamptz exposing (Timestamptz(..))
 import Hasura.Subscription as Subscription exposing (TodosOptionalArguments)
 import Html exposing (Html, a, button, div, form, h1, i, img, input, label, li, nav, p, span, text, ul)
@@ -393,14 +392,14 @@ whereIsPublic isPublic =
     Present <| buildTodos_bool_exp (\args -> { args | is_public = equalToBoolean isPublic })
 
 
-todoListSubscriptionOptionalArgument : TodosOptionalArguments -> TodosOptionalArguments
-todoListSubscriptionOptionalArgument optionalArgs =
+todoListOptionalArgument : TodosOptionalArguments -> TodosOptionalArguments
+todoListOptionalArgument optionalArgs =
     { optionalArgs | where_ = whereIsPublic False, order_by = orderByCreatedAt Desc }
 
 
 fetchPrivateTodosQuery : SelectionSet Todos RootQuery
 fetchPrivateTodosQuery =
-    Query.todos todoListSubscriptionOptionalArgument todoListSelection
+    Query.todos todoListOptionalArgumen todoListSelection
 
 
 fetchPrivateTodos : String -> Cmd Msg

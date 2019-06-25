@@ -69,9 +69,8 @@ subscriptions model =
 ---- MODEL ----
 
 
-type alias UserInfo =
-    { id : Int
-    , name : String
+type alias User =
+    { name : String
     }
 
 
@@ -80,6 +79,7 @@ type alias Todo =
     , user_id : String
     , is_completed : Bool
     , title : String
+    , user : User
     }
 
 
@@ -104,26 +104,8 @@ type alias PrivateTodo =
     }
 
 
-type alias TodoWUser =
-    { id : Int
-    , user_id : String
-    , is_completed : Bool
-    , title : String
-    , user : User
-    }
-
-
-type alias User =
-    { name : String
-    }
-
-
-type alias TodosWUser =
-    List TodoWUser
-
-
 type alias PublicTodoData =
-    { todos : TodosWUser
+    { todos : Todos
     , oldestTodoId : Int
     , newTodoCount : Int
     , currentLastTodoId : Int
@@ -216,13 +198,18 @@ todoPublicPlaceholder =
     "This is public todo"
 
 
+generateUser : Int -> User
+generateUser id =
+    User ("someUser" ++ String.fromInt id)
+
+
 generateTodo : String -> Int -> Todo
 generateTodo placeholder id =
     let
         isCompleted =
             id == 1
     in
-    Todo id ("User" ++ String.fromInt id) isCompleted (placeholder ++ " " ++ String.fromInt id)
+    Todo id ("User" ++ String.fromInt id) isCompleted (placeholder ++ " " ++ String.fromInt id) (generateUser id)
 
 
 privateTodos : Todos
@@ -230,17 +217,12 @@ privateTodos =
     List.map (generateTodo todoPrivatePlaceholder) seedIds
 
 
-generateUser : Int -> User
-generateUser id =
-    User ("someUser" ++ String.fromInt id)
-
-
-generatePublicTodo : String -> Int -> TodoWUser
+generatePublicTodo : String -> Int -> Todo
 generatePublicTodo placeholder id =
-    TodoWUser id ("User" ++ String.fromInt id) False (placeholder ++ " " ++ String.fromInt id) (generateUser id)
+    Todo id ("User" ++ String.fromInt id) False (placeholder ++ " " ++ String.fromInt id) (generateUser id)
 
 
-getPublicTodos : TodosWUser
+getPublicTodos : Todos
 getPublicTodos =
     List.map (generatePublicTodo todoPublicPlaceholder) publicSeedIds
 
@@ -602,7 +584,7 @@ publicTodoListWrapper publicTodoInfo =
         ]
 
 
-publicViewListItem : TodoWUser -> Html Msg
+publicViewListItem : Todo -> Html Msg
 publicViewListItem todo =
     li []
         [ div [ class "userInfoPublic", title todo.user_id ]
@@ -612,7 +594,7 @@ publicViewListItem todo =
         ]
 
 
-publicViewKeyedListItem : TodoWUser -> ( String, Html Msg )
+publicViewKeyedListItem : Todo -> ( String, Html Msg )
 publicViewKeyedListItem todo =
     ( String.fromInt todo.id, publicViewListItem todo )
 
