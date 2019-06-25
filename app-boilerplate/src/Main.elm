@@ -21,9 +21,28 @@ import Html.Attributes
         , type_
         , value
         )
-import Html.Events exposing (onInput)
+import Html.Events exposing (onClick, onInput)
 import Html.Keyed as Keyed
 import Http
+import Json.Decode exposing (Decoder, field, int, string)
+import Json.Encode as Encode
+import RemoteData exposing (RemoteData)
+
+
+
+{-
+   Constants
+-}
+
+
+signup_url : String
+signup_url =
+    "https://learn.hasura.io/auth/signup"
+
+
+login_url : String
+login_url =
+    "https://learn.hasura.io/auth/login"
 
 
 
@@ -118,11 +137,56 @@ type Operation
     | OperationFailed String
 
 
+
+{-
+   Login and Signup models
+-}
+
+
+type alias AuthData =
+    { email : String
+    , password : String
+    , username : String
+    , authToken : String
+    }
+
+
+type alias AuthForm =
+    { displayForm : DisplayForm
+    , isRequestInProgress : Bool
+    , isSignupSuccess : Bool
+    , requestError : String
+    }
+
+
+type alias LoginResponseParser =
+    RemoteData Http.Error LoginResponseData
+
+
+type alias LoginResponseData =
+    { token : String }
+
+
+type alias SignupResponseParser =
+    RemoteData Http.Error SignupResponseData
+
+
+type alias SignupResponseData =
+    { id : String }
+
+
+type DisplayForm
+    = Login
+    | Signup
+
+
 type alias Model =
     { privateData : PrivateTodo
     , publicTodoInsert : String
     , publicTodoInfo : PublicTodoData
     , online_users : OnlineUsers
+    , authData : AuthData
+    , authForm : AuthForm
     }
 
 
@@ -134,22 +198,31 @@ type alias Model =
 
 seedIds : List Int
 seedIds =
-    [ 1, 2, 3, 4, 5, 6 ]
+    [ 1, 2 ]
+
+
+publicSeedIds : List Int
+publicSeedIds =
+    [ 1, 2, 3, 4 ]
 
 
 todoPrivatePlaceholder : String
 todoPrivatePlaceholder =
-    "Private Todo"
+    "This is private todo"
 
 
 todoPublicPlaceholder : String
 todoPublicPlaceholder =
-    "Public Todo"
+    "This is public todo"
 
 
 generateTodo : String -> Int -> Todo
 generateTodo placeholder id =
-    Todo id ("User" ++ String.fromInt id) False (placeholder ++ "_" ++ String.fromInt id)
+    let
+        isCompleted =
+            id == 1
+    in
+    Todo id ("User" ++ String.fromInt id) isCompleted (placeholder ++ " " ++ String.fromInt id)
 
 
 privateTodos : Todos
@@ -159,17 +232,17 @@ privateTodos =
 
 generateUser : Int -> User
 generateUser id =
-    User ("User_" ++ String.fromInt id)
+    User ("someUser" ++ String.fromInt id)
 
 
 generatePublicTodo : String -> Int -> TodoWUser
 generatePublicTodo placeholder id =
-    TodoWUser id ("User" ++ String.fromInt id) False (placeholder ++ "_" ++ String.fromInt id) (generateUser id)
+    TodoWUser id ("User" ++ String.fromInt id) False (placeholder ++ " " ++ String.fromInt id) (generateUser id)
 
 
 getPublicTodos : TodosWUser
 getPublicTodos =
-    List.map (generatePublicTodo todoPublicPlaceholder) seedIds
+    List.map (generatePublicTodo todoPublicPlaceholder) publicSeedIds
 
 
 generateOnlineUser : Int -> OnlineUser
@@ -195,7 +268,9 @@ initialize =
     { privateData = initializePrivateTodo
     , online_users = getOnlineUsers
     , publicTodoInsert = ""
-    , publicTodoInfo = PublicTodoData getPublicTodos 0 0 0 False
+    , publicTodoInfo = PublicTodoData getPublicTodos 0 1 0 True
+    , authData = AuthData "" "" "" ""
+    , authForm = AuthForm Login False False ""
     }
 
 
@@ -210,13 +285,141 @@ init =
 ---- UPDATE ----
 
 
-type alias Msg =
-    ()
+type Msg
+    = EnteredEmail String
+    | EnteredPassword String
+    | EnteredUsername String
+    | MakeLoginRequest
+    | MakeSignupRequest
+    | ToggleAuthForm DisplayForm
+    | GotLoginResponse LoginResponseParser
+    | GotSignupResponse SignupResponseParser
+    | ClearAuthToken
+
+
+
+{-
+   Login encoder and decoder
+-}
+
+
+loginDataEncoder : AuthData -> Encode.Value
+loginDataEncoder authData =
+    Encode.object
+        [ ( "username", Encode.string authData.username )
+        , ( "password", Encode.string authData.password )
+        ]
+
+
+decodeLogin : Decoder LoginResponseData
+decodeLogin =
+    Json.Decode.map LoginResponseData
+        (field "token" string)
+
+
+
+{-
+   Signup encoder and decoder
+-}
+
+
+signupDataEncoder : AuthData -> Encode.Value
+signupDataEncoder authData =
+    Encode.object
+        [ ( "username", Encode.string authData.username )
+        , ( "password", Encode.string authData.password )
+        , ( "confirmPassword", Encode.string authData.password )
+        ]
+
+
+decodeSignup : Decoder SignupResponseData
+decodeSignup =
+    Json.Decode.map SignupResponseData
+        (field "id" string)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        ClearAuthToken ->
+            updateAuthData (\authData -> { authData | authToken = "" }) model Cmd.none
+
+        GotLoginResponse data ->
+            case data of
+                RemoteData.Success d ->
+                    updateAuthAndFormData (\authForm -> { authForm | isRequestInProgress = False, isSignupSuccess = False }) (\authData -> { authData | authToken = d.token }) model Cmd.none
+
+                RemoteData.Failure err ->
+                    updateAuthFormData (\authForm -> { authForm | isRequestInProgress = False, requestError = "Unable to authenticate you" }) model Cmd.none
+
+                _ ->
+                    ( model, Cmd.none )
+
+        GotSignupResponse data ->
+            case data of
+                RemoteData.Success d ->
+                    updateAuthFormData (\authForm -> { authForm | isRequestInProgress = False, requestError = "", displayForm = Login, isSignupSuccess = True }) model Cmd.none
+
+                RemoteData.Failure err ->
+                    updateAuthFormData (\authForm -> { authForm | isRequestInProgress = False, requestError = "Signup failed!" }) model Cmd.none
+
+                _ ->
+                    ( model, Cmd.none )
+
+        MakeLoginRequest ->
+            let
+                loginRequest =
+                    Http.post
+                        { url = login_url
+                        , body = Http.jsonBody (loginDataEncoder model.authData)
+                        , expect = Http.expectJson (RemoteData.fromResult >> GotLoginResponse) decodeLogin
+                        }
+            in
+            updateAuthFormData (\authForm -> { authForm | isRequestInProgress = True }) model loginRequest
+
+        MakeSignupRequest ->
+            let
+                signupRequest =
+                    Http.post
+                        { url = signup_url
+                        , body = Http.jsonBody (signupDataEncoder model.authData)
+                        , expect = Http.expectJson (RemoteData.fromResult >> GotSignupResponse) decodeSignup
+                        }
+            in
+            updateAuthFormData (\authForm -> { authForm | isRequestInProgress = True, isSignupSuccess = False }) model signupRequest
+
+        ToggleAuthForm displayForm ->
+            updateAuthFormData (\authForm -> { authForm | displayForm = displayForm, isSignupSuccess = False, requestError = "" }) model Cmd.none
+
+        EnteredEmail email ->
+            updateAuthData (\authData -> { authData | email = email }) model Cmd.none
+
+        EnteredPassword password ->
+            updateAuthData (\authData -> { authData | password = password }) model Cmd.none
+
+        EnteredUsername name ->
+            updateAuthData (\authData -> { authData | username = name }) model Cmd.none
+
+
+
+{-
+   Helper funcs
+-}
+
+
+updateAuthAndFormData : (AuthForm -> AuthForm) -> (AuthData -> AuthData) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
+updateAuthAndFormData transformForm transform model cmd =
+    ( { model | authData = transform model.authData, authForm = transformForm model.authForm }, cmd )
+
+
+updateAuthData : (AuthData -> AuthData) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
+updateAuthData transform model cmd =
+    ( { model | authData = transform model.authData }, cmd )
+
+
+updateAuthFormData : (AuthForm -> AuthForm) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
+updateAuthFormData transform model cmd =
+    ( { model | authForm = transform model.authForm }, cmd )
 
 
 
@@ -433,14 +636,119 @@ publicTodos model =
 
 
 {-
-   Main view function
+   Login render functions
 -}
 
 
-view : Model -> Html Msg
-view model =
-    div [ class "content" ]
-        [ viewTodoSection model
+textInput : String -> String -> (String -> Msg) -> Html Msg
+textInput val p onChange =
+    div [ class "authentication_input" ]
+        [ input
+            [ class "form-control input-lg"
+            , placeholder p
+            , type_ "text"
+            , value val
+            , onInput onChange
+            ]
+            []
+        ]
+
+
+passwordInput : String -> (String -> Msg) -> Html Msg
+passwordInput val onChange =
+    div [ class "authentication_input" ]
+        [ input
+            [ class "form-control input-lg"
+            , placeholder "Password"
+            , type_ "password"
+            , value val
+            , onInput onChange
+            ]
+            []
+        ]
+
+
+authenticationToggler : String -> String -> DisplayForm -> Html Msg
+authenticationToggler val ref onToggle =
+    a [ class "authentication_toggle", href ref, onClick (ToggleAuthForm onToggle) ]
+        [ text val
+        ]
+
+
+actionButton : String -> Bool -> Msg -> Html Msg
+actionButton val isRequestInProgress clickHandler =
+    button
+        [ classList
+            [ ( "btn-success btn-lg remove_border ", True )
+            , ( "disabled", isRequestInProgress )
+            ]
+        , disabled isRequestInProgress
+        , onClick clickHandler
+        , type_ "button"
+        ]
+        [ text val ]
+
+
+showSignupSuccess : Bool -> Html msg
+showSignupSuccess isSignupSuccess =
+    case isSignupSuccess of
+        True ->
+            div [ class "signup_success" ]
+                [ text "Signup successful! Please login with the same credentials to continue"
+                ]
+
+        False ->
+            text ""
+
+
+loginView : AuthData -> Bool -> String -> Bool -> Html Msg
+loginView authData isRequestInProgress reqErr isSignupSuccess =
+    div [ class "container authentication_wrapper" ]
+        [ div [ class "row" ]
+            [ div [ class "col-md-12 col-xs-12" ]
+                [ showSignupSuccess isSignupSuccess
+                , h1 [ class "c_mb_5 ta_center" ]
+                    [ text "Sign in"
+                    ]
+                , p [ class "c_mb_10 ta_center" ]
+                    [ authenticationToggler "Register?" "#register" Signup
+                    ]
+                , form []
+                    [ textInput authData.username "Email" EnteredUsername
+                    , passwordInput authData.password EnteredPassword
+                    , actionButton "Sign in" isRequestInProgress MakeLoginRequest
+                    , div [ class "error_auth_response" ] <|
+                        case String.length reqErr of
+                            0 ->
+                                [ text "" ]
+
+                            _ ->
+                                [ text ("Login error:  " ++ reqErr) ]
+                    ]
+                ]
+            ]
+        ]
+
+
+signupView : AuthData -> Bool -> String -> Html Msg
+signupView authData isRequestInProgress reqErr =
+    div [ class "container authentication_wrapper" ]
+        [ div [ class "row" ]
+            [ div [ class "col-md-12 col-xs-12" ]
+                [ h1 [ class "c_mb_5 ta_center" ]
+                    [ text "Sign up"
+                    ]
+                , p [ class "c_mb_10 ta_center" ]
+                    [ authenticationToggler "Login?" "#login" Login
+                    ]
+                , form []
+                    [ textInput authData.username "Email" EnteredUsername
+                    , passwordInput authData.password EnteredPassword
+                    , actionButton "Sign up" isRequestInProgress MakeSignupRequest
+                    , text reqErr
+                    ]
+                ]
+            ]
         ]
 
 
@@ -462,7 +770,7 @@ topNavBar =
                     [ li []
                         [ a []
                             [ button
-                                [ class "btn btn-primary" ]
+                                [ class "btn btn-primary", onClick ClearAuthToken ]
                                 [ text "Log Out" ]
                             ]
                         ]
@@ -519,3 +827,28 @@ viewTodoSection model =
                 ]
             ]
         ]
+
+
+
+{-
+   Main view function
+-}
+
+
+view : Model -> Html Msg
+view model =
+    div [ class "content" ] <|
+        case String.length model.authData.authToken of
+            0 ->
+                case model.authForm.displayForm of
+                    Login ->
+                        [ loginView model.authData model.authForm.isRequestInProgress model.authForm.requestError model.authForm.isSignupSuccess
+                        ]
+
+                    Signup ->
+                        [ signupView model.authData model.authForm.isRequestInProgress model.authForm.requestError
+                        ]
+
+            _ ->
+                [ viewTodoSection model
+                ]
