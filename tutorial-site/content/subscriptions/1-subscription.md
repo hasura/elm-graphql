@@ -1,6 +1,6 @@
 ---
 title: "Subscription"
-metaTitle: "Set up GraphQL Subscriptions using Apollo Client | GraphQL Elm Apollo Tutorial"
+metaTitle: "Set up GraphQL Subscriptions using Apollo Client | GraphQL Elm Tutorial"
 metaDescription: "You will learn how to configure GraphQL Subscriptions using Apollo Client by installing dependencies like apollo-link-ws, subscriptions-transport-ws. This will also have authorization token setup"
 ---
 
@@ -16,11 +16,12 @@ Open `src/Main.elm` and add the following code:
 <GithubLink link="https://github.com/hasura/graphql-engine/blob/master/community/learn/graphql-tutorials/tutorials/elm/app-final/src/Main.elm" text="src/Main.elm" />
 
 ```
-+ import Graphql.Document
++import Graphql.Document
 import Graphql.Http
 - import Graphql.Operation exposing (RootMutation, RootQuery)
-+ import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
-+ import Hasura.Object.Online_users as OnlineUser
++import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
++import Hasura.Object.Online_users as OnlineUser
++import Hasura.Subscription as Subscription
 ```
 
 ### Construct GraphQL Subscription
@@ -33,20 +34,26 @@ updateLastSeen authToken updateQuery =
         updateQuery
         (RemoteData.fromResult >> UpdateLastSeen)
 
-+ onlineUsersSubscription : SelectionSet OnlineUsers RootSubscription
-+ onlineUsersSubscription =
-+     Subscription.online_users identity onlineUsersSelection
-+ 
-+ 
-+ onlineUsersSelection : SelectionSet OnlineUser Hasura.Object.Online_users
-+ onlineUsersSelection =
-+     SelectionSet.map2 OnlineUser
-+         OnlineUser.id
-+         (OnlineUser.user selectUser)
++onlineUsersSubscription : SelectionSet OnlineUsers RootSubscription
++onlineUsersSubscription =
++    Subscription.online_users identity onlineUsersSelection
++
++
++onlineUsersSelection : SelectionSet OnlineUser Hasura.Object.Online_users
++onlineUsersSelection =
++    SelectionSet.map2 OnlineUser
++        OnlineUser.id
++        (OnlineUser.user selectUser)
 
 ```
 
 ### Add/Update Data Types
+
+Configure subscriptions and update `getInitialEvent` to initiate a subscription connection via ports. The subscription in this case will remain active as long as apollo client connection is live.
+
+Here is what it is doing:
+  1) Initiate a subscription a connection on page load/successfull login
+  2) Configure elm subscription to listen to any changes from the javascript side.
 
 ```
 
@@ -55,13 +62,13 @@ updateLastSeen authToken updateQuery =
 -     , user : User
 -     }
 
-+ type alias OnlineUser =
-+     { id : Maybe String
-+     , user : Maybe User
-+     }
++type alias OnlineUser =
++    { id : Maybe String
++    , user : Maybe User
++    }
 
-type alias OnlineUsersData =
-    RemoteData Json.Decode.Error OnlineUsers
++type alias OnlineUsersData =
++    RemoteData Json.Decode.Error OnlineUsers
 
 
 type alias Model =
@@ -88,8 +95,8 @@ type alias Model =
 initialize : Model
 initialize =
     { privateData = initializePrivateTodo
-+   , online_users = getOnlineUsers
--   , online_users = RemoteData.NotAsked
+-   , online_users = getOnlineUsers
++   , online_users = RemoteData.NotAsked
     , publicTodoInsert = ""
     , publicTodoInfo = PublicTodoData getPublicTodos 0 1 0 True
     , authData = AuthData "" "" "" ""
@@ -176,41 +183,41 @@ type Msg
 - generateOnlineUsersList onlineUser =
 -     List.map viewOnlineUser onlineUser
 
-+ generateOnlineUsersList : OnlineUsersData -> List (Html msg)
-+ generateOnlineUsersList onlineUser =
-+     case onlineUser of
-+         RemoteData.Success d ->
-+             List.map viewOnlineUser d
-+ 
-+         _ ->
-+             [ text "" ]	
++generateOnlineUsersList : OnlineUsersData -> List (Html msg)
++generateOnlineUsersList onlineUser =
++    case onlineUser of
++        RemoteData.Success d ->
++            List.map viewOnlineUser d
++
++        _ ->
++            [ text "" ]	
 
 
 - getOnlineUsersCount : OnlineUsers -> Int
 - getOnlineUsersCount onlineUsers =
 -     List.length onlineUsers
 
-+ getOnlineUsersCount : OnlineUsersData -> Int
-+ getOnlineUsersCount onlineUsers =
-+     case onlineUsers of
-+         RemoteData.Success data ->
-+             List.length data
-+ 
-+         _ ->
-+             0
++getOnlineUsersCount : OnlineUsersData -> Int
++getOnlineUsersCount onlineUsers =
++    case onlineUsers of
++        RemoteData.Success data ->
++            List.length data
++
++        _ ->
++            0
 
 - viewOnlineUser : OnlineUser -> Html msg
 - viewOnlineUser onlineUser =
 -     viewUserName onlineUser.user.name
 
-+ viewOnlineUser : OnlineUser -> Html msg
-+ viewOnlineUser onlineUser =
-+     case onlineUser.user of
-+         Just user ->
-+             viewUserName user.name
-+ 
-+         Nothing ->
-+             text ""
++viewOnlineUser : OnlineUser -> Html msg
++viewOnlineUser onlineUser =
++    case onlineUser.user of
++        Just user ->
++            viewUserName user.name
++
++        Nothing ->
++            text ""
 
 ```
 

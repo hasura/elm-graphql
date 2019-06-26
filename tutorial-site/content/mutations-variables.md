@@ -1,6 +1,6 @@
 ---
 title: "Mutations & Query variables"
-metaTitle: "Integrate Mutations with Query Variables | GraphQL Elm Apollo Tutorial"
+metaTitle: "Integrate Mutations with Query Variables | GraphQL Elm Tutorial"
 metaDescription: "Integrate GraphQL Mutations to create new personal todos and handle loading and error states"
 ---
 

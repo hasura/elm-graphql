@@ -1,12 +1,16 @@
 ---
-title: "Generate Elm Types"
-metaTitle: "Elm GraphQL Client Setup | GraphQL Elm Tutorial"
-metaDescription: "You will learn how to install elm-graphql"
+title: "Client Side Elm Setup"
+metaTitle: "Client Side Elm Setup | GraphQL Elm Tutorial"
+metaDescription: "The GraphQL backend is already ready. We have a task to setup our client side, autogenerate Elm Types for the GraphQL Schema"
 ---
 
 import GithubLink from "../src/GithubLink.js";
 
-We looked into the problems of making a GraphQL query from an elm application without valid types. Elm GraphQL [cli](https://www.npmjs.com/package/@dillonkearns/elm-graphql#setup) is a tool which spits out elm types by introspecting the GraphQL url. We can use them while performing any GraphQL operation from the app.
+### Why?
+
+We looked into the problems of making a GraphQL query from an elm application in the architecture section. Elm is statically typed and hence everything needs to be properly typed. 
+
+Elm GraphQL [cli](https://www.npmjs.com/package/@dillonkearns/elm-graphql#setup) is a tool which spits out elm types based on the GraphQL schema. We can use these types to interact with the GraphQL server.
 
 ### Elm GraphQL CLI Installation
 Let's get started by installing elm-graphql:
@@ -99,11 +103,11 @@ Open `package.json` and add the following script:
 
 ```
 
-Before we generate our types, we will require an `Authorization` token to access the GraphQL server. Lets login using the below link and get the `Authorization Token`
+Before we generate our types, we will need to get the `Authorization` token to access the GraphQL server. Lets login using the below link and get the `Authorization Token`
 
 [learn.hasura.io/graphql/graphiql?tutorial=react-native](https://learn.hasura.io/graphql/graphiql?tutorial=react-native)
 
-#### TODO add screenshot of the token
+![Copy authorization token](https://graphql-engine-cdn.hasura.io/learn-hasura/assets/graphql-elm/CopyAuthorizationToken.jpg)
 
 Copy the `Authorization Token` header as in the screenshot and execute the following command to generate elm types
 
@@ -113,4 +117,18 @@ npm run generate-elm-types -- --header "Authorization: Bearer <token>"
 
 You should see a folder called `Hasura` inside `src/` as in the screenshot below
 
-#### TODO add screenshot of the terminal
+![Generated elm types](https://graphql-engine-cdn.hasura.io/learn-hasura/assets/graphql-elm/GeneratedTypes.jpg)
+
+This folder contains everything you need to interact with this GraphQL server.
+
+Woo hoo, you have successfully configured your client. You can straight away dive into the action. Here is how the tutorial will be structured. 
+
+For every functionality we will definitely have following snippets of code:
+
+  - Add imports
+  - Side effects ([Commands and Subscriptions](https://guide.elm-lang.org/effects/))
+  - Add/Modify data types 
+  - Generate a GraphQL query/mutation using `elm-graphql` generated functions
+  - Handle new `Msg` types
+  - Handle new `Msg` scenarios in `update` function
+  - Create/Update render functions

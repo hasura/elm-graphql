@@ -1,6 +1,6 @@
 ---
 title: "GraphQL query"
-metaTitle: "GraphQL Query in Elm | GraphQL Elm Apollo Tutorial"
+metaTitle: "GraphQL Query in Elm | GraphQL Elm Tutorial"
 metaDescription: "We will use the generated utility functions by elm-graphql to construct a GraphQL query and fetch data."
 ---
 
@@ -17,33 +17,33 @@ Create and Open `src/GraphQLClient.elm` and add the following code:
 <GithubLink link="https://github.com/hasura/graphql-engine/blob/master/community/learn/graphql-tutorials/tutorials/elm/app-final/src/GraphQLClient.elm" text="src/GraphQLClient.elm" />
 
 ```
-+ module GraphQLClient exposing (makeGraphQLQuery)
-+ 
-+ import Graphql.Http
-+ import Graphql.Operation exposing (RootQuery)
-+ import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
-+ 
-+ graphql_url : String
-+ graphql_url =
-+     "https://learn.hasura.io/graphql"
-+ 
-+ 
-+ getAuthHeader : String -> (Graphql.Http.Request decodesTo -> Graphql.Http.Request decodesTo)
-+ getAuthHeader token =
-+     Graphql.Http.withHeader "Authorization" ("Bearer " ++ token)
-+ 
-+ 
-+ makeGraphQLQuery : String -> SelectionSet decodesTo RootQuery -> (Result (Graphql.Http.Error decodesTo) decodesTo -> msg) -> Cmd msg
-+ makeGraphQLQuery authToken query decodesTo =
-+     query
-+         |> Graphql.Http.queryRequest graphql_url
-+         {-
-+            queryRequest signature is of the form
-+                String -> SelectionSet decodesTo RootQuery -> Request decodesTo
-+                url    -> SelectionSet TasksWUser RootQuery -> Request TasksWUser
-+         -}
-+         |> getAuthHeader authToken
-+         |> Graphql.Http.send decodesTo
++module GraphQLClient exposing (makeGraphQLQuery)
++
++import Graphql.Http
++import Graphql.Operation exposing (RootQuery)
++import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
++
++graphql_url : String
++graphql_url =
++    "https://learn.hasura.io/graphql"
++
++
++getAuthHeader : String -> (Graphql.Http.Request decodesTo -> Graphql.Http.Request decodesTo)
++getAuthHeader token =
++    Graphql.Http.withHeader "Authorization" ("Bearer " ++ token)
++
++
++makeGraphQLQuery : String -> SelectionSet decodesTo RootQuery -> (Result (Graphql.Http.Error decodesTo) decodesTo -> msg) -> Cmd msg
++makeGraphQLQuery authToken query decodesTo =
++    query
++        |> Graphql.Http.queryRequest graphql_url
++        {-
++           queryRequest signature is of the form
++               String -> SelectionSet decodesTo RootQuery -> Request decodesTo
++               url    -> SelectionSet TasksWUser RootQuery -> Request TasksWUser
++        -}
++        |> getAuthHeader authToken
++        |> Graphql.Http.send decodesTo
 
 ```
 
@@ -58,25 +58,25 @@ Create and Open `src/Main.elm` and add the following code:
 ```
 import Array
 import Browser
-+ import GraphQLClient exposing (makeGraphQLQuery)
-+ import Graphql.Http
-+ import Graphql.Operation exposing (RootQuery)
-+ import Graphql.OptionalArgument as OptionalArgument exposing (OptionalArgument(..))
-+ import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
-+ import Hasura.Enum.Order_by exposing (Order_by(..))
-+ import Hasura.InputObject
-+     exposing
-+         ( Boolean_comparison_exp
-+         , Todos_bool_exp
-+         , Todos_order_by
-+         , buildBoolean_comparison_exp
-+         , buildTodos_bool_exp
-+         , buildTodos_order_by
-+         )   
-+ import Hasura.Object
-+ import Hasura.Object.Todos as Todos
-+ import Hasura.Object.Users as Users
-+ import Hasura.Query as Query exposing (TodosOptionalArguments)
++import GraphQLClient exposing (makeGraphQLQuery)
++import Graphql.Http
++import Graphql.Operation exposing (RootQuery)
++import Graphql.OptionalArgument as OptionalArgument exposing (OptionalArgument(..))
++import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
++import Hasura.Enum.Order_by exposing (Order_by(..))
++import Hasura.InputObject
++    exposing
++        ( Boolean_comparison_exp
++        , Todos_bool_exp
++        , Todos_order_by
++        , buildBoolean_comparison_exp
++        , buildTodos_bool_exp
++        , buildTodos_order_by
++        )   
++import Hasura.Object
++import Hasura.Object.Todos as Todos
++import Hasura.Object.Users as Users
++import Hasura.Query as Query exposing (TodosOptionalArguments)
 
 ```
 
@@ -89,52 +89,52 @@ init =
     , Cmd.none
     )
 
-+ ---- Application logic and variables ----
-+ 
-+ 
-+ orderByCreatedAt : Order_by -> OptionalArgument (List Todos_order_by)
-+ orderByCreatedAt order =
-+     Present <| [ buildTodos_order_by (\args -> { args | created_at = OptionalArgument.Present order }) ]
-+ 
-+ 
-+ equalToBoolean : Bool -> OptionalArgument Boolean_comparison_exp
-+ equalToBoolean isPublic =
-+     Present <| buildBoolean_comparison_exp (\args -> { args | eq_ = OptionalArgument.Present isPublic })
-+ 
-+ 
-+ whereIsPublic : Bool -> OptionalArgument Todos_bool_exp
-+ whereIsPublic isPublic =
-+     Present <| buildTodos_bool_exp (\args -> { args | is_public = equalToBoolean isPublic })
-+ 
-+ 
-+ todoListOptionalArgument : TodosOptionalArguments -> TodosOptionalArguments
-+ todoListOptionalArgument optionalArgs =
-+     { optionalArgs | where_ = whereIsPublic False, order_by = orderByCreatedAt Desc }
++---- Application logic and variables ----
++
++
++orderByCreatedAt : Order_by -> OptionalArgument (List Todos_order_by)
++orderByCreatedAt order =
++    Present <| [ buildTodos_order_by (\args -> { args | created_at = OptionalArgument.Present order }) ]
++
++
++equalToBoolean : Bool -> OptionalArgument Boolean_comparison_exp
++equalToBoolean isPublic =
++    Present <| buildBoolean_comparison_exp (\args -> { args | eq_ = OptionalArgument.Present isPublic })
++
++
++whereIsPublic : Bool -> OptionalArgument Todos_bool_exp
++whereIsPublic isPublic =
++    Present <| buildTodos_bool_exp (\args -> { args | is_public = equalToBoolean isPublic })
++
++
++todoListOptionalArgument : TodosOptionalArguments -> TodosOptionalArguments
++todoListOptionalArgument optionalArgs =
++    { optionalArgs | where_ = whereIsPublic False, order_by = orderByCreatedAt Desc }
 
-+ selectUser : SelectionSet User Hasura.Object.Users
-+ selectUser =
-+     SelectionSet.map User
-+         Users.name
++selectUser : SelectionSet User Hasura.Object.Users
++selectUser =
++    SelectionSet.map User
++        Users.name
 
-+ todoListSelection : SelectionSet Todo Hasura.Object.Todos
-+ todoListSelection =
-+     SelectionSet.map5 Todo
-+         Todos.id
-+         Todos.user_id
-+         Todos.is_completed
-+         Todos.title
-+         (Todos.user selectUser)
-+ 
-+ 
-+ fetchPrivateTodosQuery : SelectionSet Todos RootQuery
-+ fetchPrivateTodosQuery =
-+     Query.todos todoListOptionalArgument todoListSelection
-+ 
-+ fetchPrivateTodos : String -> Cmd Msg
-+ fetchPrivateTodos authToken =
-+     makeGraphQLQuery authToken
-+         fetchPrivateTodosQuery
-+         (RemoteData.fromResult >> FetchPrivateDataSuccess)
++todoListSelection : SelectionSet Todo Hasura.Object.Todos
++todoListSelection =
++    SelectionSet.map5 Todo
++        Todos.id
++        Todos.user_id
++        Todos.is_completed
++        Todos.title
++        (Todos.user selectUser)
++
++
++fetchPrivateTodosQuery : SelectionSet Todos RootQuery
++fetchPrivateTodosQuery =
++    Query.todos todoListOptionalArgument todoListSelection
++
++fetchPrivateTodos : String -> Cmd Msg
++fetchPrivateTodos authToken =
++    makeGraphQLQuery authToken
++        fetchPrivateTodosQuery
++        (RemoteData.fromResult >> FetchPrivateDataSuccess)
 
 ```
 
@@ -192,6 +192,9 @@ type alias OnlineUser =
     , user : User
     }
 
++type alias TodoData =
++    RemoteData (Graphql.Http.Error Todos) Todos
+
 type alias PrivateTodo =
     {
 -   todos : Todos
@@ -206,10 +209,6 @@ type DisplayForm
     | Signup
 
 
-+ type alias TodoData =
-+     RemoteData (Graphql.Http.Error Todos) Todos
-
-
 type alias Model =
     { privateData : PrivateTodo
     , publicTodoInsert : String
@@ -217,6 +216,15 @@ type alias Model =
     , online_users : OnlineUsers
     , authData : AuthData
     , authForm : AuthForm
+    }
+
+initializePrivateTodo : PrivateTodo
+initializePrivateTodo =
+-   { todos = privateTodos
++   { todos = RemoteData.Loading
+    , visibility = "All"
+    , newTodo = ""
+    , mutateTodo = GraphQLResponse RemoteData.NotAsked
     }
 
 ```
@@ -256,9 +264,9 @@ Add the following to the update function
 Add helper function to update privateData
 
 ```
-+ updatePrivateData : (PrivateTodo -> PrivateTodo) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
-+ updatePrivateData transform model cmd =
-+     ( { model | privateData = transform model.privateData }, cmd )
++updatePrivateData : (PrivateTodo -> PrivateTodo) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
++updatePrivateData transform model cmd =
++    ( { model | privateData = transform model.privateData }, cmd )
 ```
 
 
@@ -273,23 +281,23 @@ Lets modify our render functions to accept modified types
 -     div [ class "tasks_wrapper" ]
 -         [ todoListWrapper privateData.visibility privateData.todos ]
 
-+ renderTodos : PrivateTodo -> Html Msg
-+ renderTodos privateData =
-+     div [ class "tasks_wrapper" ] <|
-+         case privateData.todos of
-+             RemoteData.NotAsked ->
-+                 [ text "" ]
-+ 
-+             RemoteData.Success todos ->
-+                 [ todoListWrapper privateData.visibility todos ]
-+ 
-+             RemoteData.Loading ->
-+                 [ span [ class "loading_text" ]
-+                     [ text "Loading todos ..." ]
-+                 ]
-+ 
-+             RemoteData.Failure err ->
-+                 [ text "Error loading todos" ]
++renderTodos : PrivateTodo -> Html Msg
++renderTodos privateData =
++    div [ class "tasks_wrapper" ] <|
++        case privateData.todos of
++            RemoteData.NotAsked ->
++                [ text "" ]
++
++            RemoteData.Success todos ->
++                [ todoListWrapper privateData.visibility todos ]
++
++            RemoteData.Loading ->
++                [ span [ class "loading_text" ]
++                    [ text "Loading todos ..." ]
++                ]
++
++            RemoteData.Failure err ->
++                [ text "Error loading todos" ]
 
 ```
 
@@ -298,11 +306,11 @@ Lets wire things up, in elm an asynchronous call is called a side effect. Side e
 Lets configure our init function to execute a command post successful login to fetch user's private todo list.
 
 ```
-+ getInitialEvent : String -> Cmd Msg
-+ getInitialEvent authToken =
-+     Cmd.batch
-+         [ fetchPrivateTodos authToken
-+         ]
++getInitialEvent : String -> Cmd Msg
++getInitialEvent authToken =
++    Cmd.batch
++        [ fetchPrivateTodos authToken
++        ]
 
 
 init : ( Model, Cmd Msg )
@@ -319,8 +327,8 @@ Lets modify our `GotLoginResponse` message handler to invoke `getInitialEvent` f
 GotLoginResponse data ->
     case data of
         RemoteData.Success d ->
--						updateAuthAndFormData (\authForm -> { authForm | isRequestInProgress = False, isSignupSuccess = False }) (\authData -> { authData | authToken = d.token }) model Cmd.none
-+           updateAuthAndFormData (\authForm -> { authForm | isRequestInProgress = False, isSignupSuccess = False }) (\authData -> { authData | authToken = d.token }) model (getInitialEvent d.token)
+-         updateAuthAndFormData (\authForm -> { authForm | isRequestInProgress = False, isSignupSuccess = False }) (\authData -> { authData | authToken = d.token }) model Cmd.none
++         updateAuthAndFormData (\authForm -> { authForm | isRequestInProgress = False, isSignupSuccess = False }) (\authData -> { authData | authToken = d.token }) model (getInitialEvent d.token)
 
         RemoteData.Failure err ->
             updateAuthFormData (\authForm -> { authForm | isRequestInProgress = False, requestError = "Unable to authenticate you" }) model Cmd.none
@@ -331,7 +339,7 @@ GotLoginResponse data ->
 ```
 
 
-Woot! You have written your first GraphQL integration with React. Easy isn't it?
+Woot! You have written your first GraphQL integration with Elm. Easy isn't it?
 
 How does this work?
 -------------------
@@ -339,7 +347,7 @@ How does this work?
 Here is the summary of how this works
 - User logs in to the app
 - A command is executed which makes a GraphQL query to fetch the list of private todos
-- Whether the request is suceeded or failed, the function will invoke the configured `function` with the response data
+- Whether the request is succeeds or fails, the function will invoke the configured `function` with the response data
 - Our update function stores the given response into our model
 - The render function picks up the updated data and handles accordingly
 	-	It can be in one of the following states: Loading, Failure, Success 

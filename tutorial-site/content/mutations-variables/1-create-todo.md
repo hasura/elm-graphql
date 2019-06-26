@@ -1,6 +1,6 @@
 ---
 title: "Create todos - mutation"
-metaTitle: "Mutation to create todos | GraphQL Elm Apollo Tutorial"
+metaTitle: "Mutation to create todos | GraphQL Elm Tutorial"
 metaDescription: "GraphQL Mutation to create new personal todos. Try the mutation in GraphiQL, passing the Authorization token to get authenticated results."
 ---
 
@@ -35,26 +35,26 @@ Open `src/GraphQLClient.elm` and add the following code:
 
 ```
 - module GraphQLClient exposing (makeGraphQLQuery)
-+ module GraphQLClient exposing (makeGraphQLMutation, makeGraphQLQuery)
++module GraphQLClient exposing (makeGraphQLMutation, makeGraphQLQuery)
 
 import Graphql.Http
 
 - import Graphql.Operation exposing (RootQuery)
-+ import Graphql.Operation exposing (RootMutation, RootQuery)
++import Graphql.Operation exposing (RootMutation, RootQuery)
 
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 
-+ makeGraphQLMutation : String -> SelectionSet decodesTo RootMutation -> (Result (Graphql.Http.Error decodesTo) decodesTo -> msg) -> Cmd msg
-+ makeGraphQLMutation authToken query decodesTo =
-+     query
-+         |> Graphql.Http.mutationRequest graphql_url
-+         {-
-+            mutationRequest signature is of the form
-+                String -> SelectionSet decodesTo RootMutation -> Request decodesTo
-+                url    -> SelectionSet TasksWUser RootMutation -> Request TasksWUser
-+         -}
-+         |> getAuthHeader authToken
-+         |> Graphql.Http.send decodesTo
++makeGraphQLMutation : String -> SelectionSet decodesTo RootMutation -> (Result (Graphql.Http.Error decodesTo) decodesTo -> msg) -> Cmd msg
++makeGraphQLMutation authToken query decodesTo =
++    query
++        |> Graphql.Http.mutationRequest graphql_url
++        {-
++           mutationRequest signature is of the form
++               String -> SelectionSet decodesTo RootMutation -> Request decodesTo
++               url    -> SelectionSet TasksWUser RootMutation -> Request TasksWUser
++        -}
++        |> getAuthHeader authToken
++        |> Graphql.Http.send decodesTo
 ```
 
 
@@ -69,12 +69,12 @@ Open `src/Main.elm` and add the following code:
 
 ```
 - import GraphQLClient exposing (makeGraphQLQuery)
-+ import GraphQLClient exposing (makeGraphQLMutation, makeGraphQLQuery)
++import GraphQLClient exposing (makeGraphQLMutation, makeGraphQLQuery)
 
 import Graphql.Http
 
 - import Graphql.Operation exposing (RootQuery)
-+ import Graphql.Operation exposing (RootMutation, RootQuery)
++import Graphql.Operation exposing (RootMutation, RootQuery)
 
 import Hasura.InputObject
     exposing
@@ -88,13 +88,13 @@ import Hasura.InputObject
         , buildTodos_order_by
         )
 
-+ import Hasura.Mutation as Mutation
-+     exposing
-+         ( InsertTodosRequiredArguments
-+         , insert_todos
-+         )
++import Hasura.Mutation as Mutation
++    exposing
++        ( InsertTodosRequiredArguments
++        , insert_todos
++        )
 
-+ import Hasura.Object.Todos_mutation_response as TodosMutation
++import Hasura.Object.Todos_mutation_response as TodosMutation
 
 import Html.Events
     exposing
@@ -114,36 +114,36 @@ fetchPrivateTodos authToken =
         fetchPrivateTodosQuery
         (RemoteData.fromResult >> FetchPrivateDataSuccess)
 
-+ insertTodoObjects : String -> Bool -> Todos_insert_input
-+ insertTodoObjects newTodo isPublic =
-+     buildTodos_insert_input
-+         (\args ->
-+             { args
-+                 | title = Present newTodo
-+                 , is_public = Present isPublic
-+             }
-+         )
-+ 
-+ 
-+ insertArgs : String -> Bool -> InsertTodosRequiredArguments
-+ insertArgs newTodo isPublic =
-+     InsertTodosRequiredArguments [ insertTodoObjects newTodo isPublic ]
-+ 
-+ 
-+ getTodoListInsertObject : String -> Bool -> SelectionSet (Maybe MutationResponse) RootMutation
-+ getTodoListInsertObject newTodo isPublic =
-+     insert_todos identity (insertArgs newTodo isPublic) mutationResponseSelection
-+ 
-+ 
-+ mutationResponseSelection : SelectionSet MutationResponse Hasura.Object.Todos_mutation_response
-+ mutationResponseSelection =
-+     SelectionSet.map MutationResponse
-+         TodosMutation.affected_rows
-+ 
-+ 
-+ makeMutation : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
-+ makeMutation mutation authToken =
-+     makeGraphQLMutation authToken mutation (RemoteData.fromResult >> GraphQLResponse >> InsertPrivateTodoResponse)
++insertTodoObjects : String -> Bool -> Todos_insert_input
++insertTodoObjects newTodo isPublic =
++    buildTodos_insert_input
++        (\args ->
++            { args
++                | title = Present newTodo
++                , is_public = Present isPublic
++            }
++        )
++
++
++insertArgs : String -> Bool -> InsertTodosRequiredArguments
++insertArgs newTodo isPublic =
++    InsertTodosRequiredArguments [ insertTodoObjects newTodo isPublic ]
++
++
++getTodoListInsertObject : String -> Bool -> SelectionSet (Maybe MutationResponse) RootMutation
++getTodoListInsertObject newTodo isPublic =
++    insert_todos identity (insertArgs newTodo isPublic) mutationResponseSelection
++
++
++mutationResponseSelection : SelectionSet MutationResponse Hasura.Object.Todos_mutation_response
++mutationResponseSelection =
++    SelectionSet.map MutationResponse
++        TodosMutation.affected_rows
++
++
++makeMutation : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
++makeMutation mutation authToken =
++    makeGraphQLMutation authToken mutation (RemoteData.fromResult >> GraphQLResponse >> InsertPrivateTodoResponse)
 
 ```
 
@@ -158,17 +158,17 @@ type alias OnlineUser =
     }
 
 
-+ type alias MutationResponse =
-+     { affected_rows : Int
-+     }
-+ 
-+ 
-+ type alias MaybeMutationResponse =
-+     Maybe MutationResponse
-+ 
-+ 
-+ type GraphQLResponse decodesTo
-+     = GraphQLResponse (RemoteData (Graphql.Http.Error decodesTo) decodesTo)
++type alias MutationResponse =
++    { affected_rows : Int
++    }
++
++
++type alias MaybeMutationResponse =
++    Maybe MutationResponse
++
++
++type GraphQLResponse decodesTo
++    = GraphQLResponse (RemoteData (Graphql.Http.Error decodesTo) decodesTo)
 
 type alias PrivateTodo =
     { todos : TodoData
@@ -262,27 +262,27 @@ renderTodos privateData =
                 [ text "Error loading todos" ]
 
 
-+ handleMutationTodo : GraphQLResponse MaybeMutationResponse -> List (Html msg)
-+ handleMutationTodo (GraphQLResponse mutationTodo) =
-+     case mutationTodo of
-+         RemoteData.NotAsked ->
-+             [ text "" ]
-+ 
-+         RemoteData.Success todos ->
-+             [ text "" ]
-+ 
-+         RemoteData.Loading ->
-+             [ i [ class "fa fa-spinner fa-spin" ] []
-+             ]
-+ 
-+         RemoteData.Failure err ->
-+             [ text "Error Mutating data:" ]
-+ 
-+ 
-+ todoMutation : GraphQLResponse MaybeMutationResponse -> Html msg
-+ todoMutation mutateTodo =
-+     span [ class "mutation_loader" ] <|
-+         handleMutationTodo mutateTodo
++handleMutationTodo : GraphQLResponse MaybeMutationResponse -> List (Html msg)
++handleMutationTodo (GraphQLResponse mutationTodo) =
++    case mutationTodo of
++        RemoteData.NotAsked ->
++            [ text "" ]
++
++        RemoteData.Success todos ->
++            [ text "" ]
++
++        RemoteData.Loading ->
++            [ i [ class "fa fa-spinner fa-spin" ] []
++            ]
++
++        RemoteData.Failure err ->
++            [ text "Error Mutating data:" ]
++
++
++todoMutation : GraphQLResponse MaybeMutationResponse -> Html msg
++todoMutation mutateTodo =
++    span [ class "mutation_loader" ] <|
++        handleMutationTodo mutateTodo
 
 
 personalTodos : PrivateTodo -> Html Msg
@@ -292,7 +292,8 @@ personalTodos privateData =
             [ div [ class "sectionHeader" ]
                 [ text "Personal todos"
                 ]
-            , form [ class "formInput", onSubmit InsertPrivateTodo ]
+-           , form [ class "formInput" ]
++           , form [ class "formInput", onSubmit InsertPrivateTodo ]
 -               [ input [ class "input", placeholder "What needs to be done?" ]
 +               [ input [ class "input", placeholder "What needs to be done?", onInput UpdateNewTodo, value privateData.newTodo ]
                     []
@@ -304,5 +305,12 @@ personalTodos privateData =
         ]
 ```
 
+How does this work?
+-------------------
+
+Here is the summary of how this works
+- User types `todo` in the input box
+- OnSubmit invokes the configured function, which returns a type `Msg`
+- The update function is configured to listen to `Msg` types and hence the mutation is executed
 
 Woot! You have successfully written your first GraphQL mutation with Elm. Easy isn't it?

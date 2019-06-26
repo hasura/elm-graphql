@@ -1,6 +1,6 @@
 ---
 title: "Delete todo - mutation"
-metaTitle: "Mutation to delete todo | GraphQL Elm Apollo Tutorial"
+metaTitle: "Mutation to delete todo | GraphQL Elm Tutorial"
 metaDescription: "GraphQL Mutation to delete personal todos. Try the mutation in GraphiQL, passing the Authorization token to get authenticated results."
 ---
 
@@ -63,6 +63,8 @@ import Hasura.Mutation as Mutation
 
 ### Construct GraphQL Mutation
 
+We will be constructing a GraphQL mutation as above
+
 ```
 updateTodoList : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
 updateTodoList mutation authToken =
@@ -71,35 +73,35 @@ updateTodoList mutation authToken =
         mutation
         (RemoteData.fromResult >> UpdateTodo)
 
-+ deleteSingleTodo : Int -> SelectionSet (Maybe MutationResponse) RootMutation
-+ deleteSingleTodo todoId =
-+     Mutation.delete_todos (setTodoListDeleteWhere todoId) mutationResponseSelection
-+ 
-+ 
-+ setTodoListDeleteWhere : Int -> DeleteTodosRequiredArguments
-+ setTodoListDeleteWhere todoId =
-+     DeleteTodosRequiredArguments
-+         (buildTodos_bool_exp
-+             (\args ->
-+                 { args
-+                     | id = Present (setTodoListValueForId todoId)
-+                 }
-+             )
-+         )
-+ 
-+ 
-+ delResponseSelection : SelectionSet MutationResponse Hasura.Object.Todos_mutation_response
-+ delResponseSelection =
-+     SelectionSet.map MutationResponse
-+         TodosMutation.affected_rows
-+ 
-+ 
-+ deleteSingleTodoItem : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
-+ deleteSingleTodoItem mutation authToken =
-+     makeGraphQLMutation
-+         authToken
-+         mutation
-+         (RemoteData.fromResult >> TodoDeleted)
++deleteSingleTodo : Int -> SelectionSet (Maybe MutationResponse) RootMutation
++deleteSingleTodo todoId =
++    Mutation.delete_todos (setTodoListDeleteWhere todoId) mutationResponseSelection
++
++
++setTodoListDeleteWhere : Int -> DeleteTodosRequiredArguments
++setTodoListDeleteWhere todoId =
++    DeleteTodosRequiredArguments
++        (buildTodos_bool_exp
++            (\args ->
++                { args
++                    | id = Present (setTodoListValueForId todoId)
++                }
++            )
++        )
++
++
++delResponseSelection : SelectionSet MutationResponse Hasura.Object.Todos_mutation_response
++delResponseSelection =
++    SelectionSet.map MutationResponse
++        TodosMutation.affected_rows
++
++
++deleteSingleTodoItem : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
++deleteSingleTodoItem mutation authToken =
++    makeGraphQLMutation
++        authToken
++        mutation
++        (RemoteData.fromResult >> TodoDeleted)
 
 
 
@@ -114,8 +116,8 @@ Lets add new data types required to perform this operation
 type alias UpdateTodoItemResponse =
     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
 
-+ type alias DeleteTodo =
-+     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
++type alias DeleteTodo =
++    RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
 
 
 ```

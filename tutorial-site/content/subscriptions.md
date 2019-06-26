@@ -1,6 +1,6 @@
 ---
 title: "Subscriptions to show online users"
-metaTitle: "Update last seen of user with Mutation | GraphQL Elm Apollo Tutorial"
+metaTitle: "Update last seen of user with Mutation | GraphQL Elm Tutorial"
 metaDescription: "GraphQL Mutation to update last seen of user to make them available online."
 ---
 
@@ -30,10 +30,17 @@ Open `src/Main.elm` and configure the following ports
 <GithubLink link="https://github.com/hasura/graphql-engine/blob/master/community/learn/graphql-tutorials/tutorials/elm/app-final/src/Main.elm" text="src/Main.elm" />
 
 ```
+main : Program () Model Msg                                                                                                                          
+main =
+    Browser.element
+        { view = view
+        , init = \_ -> init
+        , update = update
+        , subscriptions = subscriptions
+        }
 
-port createSubscriptionToOnlineUsers : ( String, String ) -> Cmd msg
-
-port gotOnlineUsers : (Json.Decode.Value -> msg) -> Sub msg
++port createSubscriptionToOnlineUsers : ( String, String ) -> Cmd msg
++port gotOnlineUsers : (Json.Decode.Value -> msg) -> Sub msg
 ```
 
 What we have done here is we have created two ports - one to send information from elm and one to receive information from js.
@@ -115,8 +122,8 @@ import Hasura.Mutation as Mutation
 +       , UpdateUsersRequiredArguments
         , insert_todos
         )
-+ import Hasura.Scalar as Timestamptz exposing (Timestamptz(..))
-+ import Hasura.Object.Users_mutation_response as UsersMutation
++import Hasura.Scalar as Timestamptz exposing (Timestamptz(..))
++import Hasura.Object.Users_mutation_response as UsersMutation
 ```
 
 ### Construct GraphQL Mutation
@@ -129,46 +136,46 @@ deleteAllCompletedItems mutation authToken =
         mutation
         (RemoteData.fromResult >> AllCompletedItemsDeleted)
 
-+ updateUserSetArg : String -> Users_set_input
-+ updateUserSetArg timestamp =
-+     buildUsers_set_input
-+         (\args ->
-+             { args
-+                 | last_seen = Present (Timestamptz timestamp)
-+             }
-+         )
-+ 
-+ 
-+ updateLastSeenArgs : String -> UpdateUsersOptionalArguments -> UpdateUsersOptionalArguments
-+ updateLastSeenArgs timestamp optionalArgs =
-+     { optionalArgs
-+         | set_ = Present (updateUserSetArg timestamp)
-+     }
-+ 
-+ 
-+ updateLastSeenWhere : UpdateUsersRequiredArguments
-+ updateLastSeenWhere =
-+     UpdateUsersRequiredArguments
-+         (buildUsers_bool_exp (\args -> args))
-+ 
-+ 
-+ selectionUpdateUserLastSeen : SelectionSet MutationResponse Hasura.Object.Users_mutation_response
-+ selectionUpdateUserLastSeen =
-+     SelectionSet.map MutationResponse
-+         UsersMutation.affected_rows
-+ 
-+ 
-+ updateUserLastSeen : String -> SelectionSet (Maybe MutationResponse) RootMutation
-+ updateUserLastSeen currTime =
-+     Mutation.update_users (updateLastSeenArgs currTime) updateLastSeenWhere selectionUpdateUserLastSeen
-+ 
-+ 
-+ updateLastSeen : String -> SelectionSet (Maybe MutationResponse) RootMutation -> Cmd Msg
-+ updateLastSeen authToken updateQuery =
-+     makeGraphQLMutation
-+         authToken
-+         updateQuery
-+         (RemoteData.fromResult >> UpdateLastSeen)
++updateUserSetArg : String -> Users_set_input
++updateUserSetArg timestamp =
++    buildUsers_set_input
++        (\args ->
++            { args
++                | last_seen = Present (Timestamptz timestamp)
++            }
++        )
++
++
++updateLastSeenArgs : String -> UpdateUsersOptionalArguments -> UpdateUsersOptionalArguments
++updateLastSeenArgs timestamp optionalArgs =
++    { optionalArgs
++        | set_ = Present (updateUserSetArg timestamp)
++    }
++
++
++updateLastSeenWhere : UpdateUsersRequiredArguments
++updateLastSeenWhere =
++    UpdateUsersRequiredArguments
++        (buildUsers_bool_exp (\args -> args))
++
++
++selectionUpdateUserLastSeen : SelectionSet MutationResponse Hasura.Object.Users_mutation_response
++selectionUpdateUserLastSeen =
++    SelectionSet.map MutationResponse
++        UsersMutation.affected_rows
++
++
++updateUserLastSeen : String -> SelectionSet (Maybe MutationResponse) RootMutation
++updateUserLastSeen currTime =
++    Mutation.update_users (updateLastSeenArgs currTime) updateLastSeenWhere selectionUpdateUserLastSeen
++
++
++updateLastSeen : String -> SelectionSet (Maybe MutationResponse) RootMutation -> Cmd Msg
++updateLastSeen authToken updateQuery =
++    makeGraphQLMutation
++        authToken
++        updateQuery
++        (RemoteData.fromResult >> UpdateLastSeen)
 
 
 ```
@@ -182,8 +189,8 @@ type alias AllDeleted =
     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
 
 
-+ type alias UpdateLastSeenResponse =
-+     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
++type alias UpdateLastSeenResponse =
++    RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
 ```
 
 ### Add new Msg type

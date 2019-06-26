@@ -1,6 +1,6 @@
 ---
 title: "Update todos - mutation"
-metaTitle: "Mutation to update todos | GraphQL Elm Apollo Tutorial"
+metaTitle: "Mutation to update todos | GraphQL Elm Tutorial"
 metaDescription: "GraphQL Mutation to update personal todos. Try the mutation in GraphiQL, passing the Authorization token to get authenticated results."
 ---
 
@@ -63,61 +63,63 @@ import Hasura.Mutation as Mutation
 
 ### Construct GraphQL Mutation
 
+We will be constructing a GraphQL mutation as above
+
 ```
 makeMutation : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
 makeMutation mutation authToken =
     makeGraphQLMutation authToken mutation (RemoteData.fromResult >> GraphQLResponse >> InsertPrivateTodoResponse)
 
-+ updateTodoStatus : Int -> Bool -> SelectionSet (Maybe MutationResponse) RootMutation
-+ updateTodoStatus todoId status =
-+     Mutation.update_todos (setTodoListUpdateArgs status) (setTodoListUpdateWhere todoId) mutationResponseSelection
-+ 
-+ 
-+ setTodoListSetArg : Bool -> Todos_set_input
-+ setTodoListSetArg status =
-+     buildTodos_set_input
-+         (\args ->
-+             { args
-+                 | is_completed = OptionalArgument.Present status
-+             }
-+         )
-+ 
-+ 
-+ setTodoListUpdateArgs : Bool -> UpdateTodosOptionalArguments -> UpdateTodosOptionalArguments
-+ setTodoListUpdateArgs status optionalArgs =
-+     { optionalArgs
-+         | set_ = Present (setTodoListSetArg status)
-+     }
-+ 
-+ 
-+ setTodoListValueForId : Int -> Integer_comparison_exp
-+ setTodoListValueForId todoId =
-+     buildInteger_comparison_exp
-+         (\args ->
-+             { args
-+                 | eq_ = Present todoId
-+             }
-+         )
-+ 
-+ 
-+ setTodoListUpdateWhere : Int -> UpdateTodosRequiredArguments
-+ setTodoListUpdateWhere todoId =
-+     UpdateTodosRequiredArguments
-+         (buildTodos_bool_exp
-+             (\args ->
-+                 { args
-+                     | id = Present (setTodoListValueForId todoId)
-+                 }
-+             )
-+         )
-+ 
-+ 
-+ updateTodoList : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
-+ updateTodoList mutation authToken =
-+     makeGraphQLMutation
-+         authToken
-+         mutation
-+         (RemoteData.fromResult >> UpdateTodo)
++updateTodoStatus : Int -> Bool -> SelectionSet (Maybe MutationResponse) RootMutation
++updateTodoStatus todoId status =
++    Mutation.update_todos (setTodoListUpdateArgs status) (setTodoListUpdateWhere todoId) mutationResponseSelection
++
++
++setTodoListSetArg : Bool -> Todos_set_input
++setTodoListSetArg status =
++    buildTodos_set_input
++        (\args ->
++            { args
++                | is_completed = OptionalArgument.Present status
++            }
++        )
++
++
++setTodoListUpdateArgs : Bool -> UpdateTodosOptionalArguments -> UpdateTodosOptionalArguments
++setTodoListUpdateArgs status optionalArgs =
++    { optionalArgs
++        | set_ = Present (setTodoListSetArg status)
++    }
++
++
++setTodoListValueForId : Int -> Integer_comparison_exp
++setTodoListValueForId todoId =
++    buildInteger_comparison_exp
++        (\args ->
++            { args
++                | eq_ = Present todoId
++            }
++        )
++
++
++setTodoListUpdateWhere : Int -> UpdateTodosRequiredArguments
++setTodoListUpdateWhere todoId =
++    UpdateTodosRequiredArguments
++        (buildTodos_bool_exp
++            (\args ->
++                { args
++                    | id = Present (setTodoListValueForId todoId)
++                }
++            )
++        )
++
++
++updateTodoList : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
++updateTodoList mutation authToken =
++    makeGraphQLMutation
++        authToken
++        mutation
++        (RemoteData.fromResult >> UpdateTodo)
 
 
 ```
@@ -131,8 +133,8 @@ Lets add new data types required to perform this operation
 type alias TodoData =
     RemoteData (Graphql.Http.Error Todos) Todos
 
-+ type alias UpdateTodoItemResponse =
-+     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
++type alias UpdateTodoItemResponse =
++    RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
 
 ```
 
