@@ -1,6 +1,6 @@
 ---
 title: "Sync new todos"
-metaTitle: "Sync new todos in public feed | GraphQL Elm Apollo Tutorial"
+metaTitle: "Sync new todos in public feed | GraphQL Elm Tutorial"
 metaDescription: "You will learn how to sync new todos added by other people in the public feed by fetching older and newer data using GraphQL Queries"
 ---
 
@@ -22,105 +22,105 @@ makeRequest query authToken =
         query
         (RemoteData.fromResult >> FetchPublicDataSuccess)
 
-+ gtLastTodoId : Int -> OptionalArgument Integer_comparison_exp
-+ gtLastTodoId id =
-+     Present
-+         (buildInteger_comparison_exp
-+             (\args ->
-+                 { args
-+                     | gt_ = Present id
-+                 }
-+             )
-+         )
-+ 
-+ 
-+ newPublicTodosWhere : Int -> OptionalArgument Todos_bool_exp
-+ newPublicTodosWhere id =
-+     Present
-+         (buildTodos_bool_exp
-+             (\args ->
-+                 { args
-+                     | id = gtLastTodoId id
-+                     , is_public = equalToBoolean True
-+                 }
-+             )
-+         )
-+ 
-+ 
-+ 
-+ {-
-+    Generates argument as below
-+    ```
-+     order_by : [
-+       {
-+         created_at: desc
-+       }
-+     ],
-+      where_ : {
-+        id: {
-+          _gt: <id>
-+        },
-+        is_public: {
-+          _eq: True
-+        }
++gtLastTodoId : Int -> OptionalArgument Integer_comparison_exp
++gtLastTodoId id =
++    Present
++        (buildInteger_comparison_exp
++            (\args ->
++                { args
++                    | gt_ = Present id
++                }
++            )
++        )
++
++
++newPublicTodosWhere : Int -> OptionalArgument Todos_bool_exp
++newPublicTodosWhere id =
++    Present
++        (buildTodos_bool_exp
++            (\args ->
++                { args
++                    | id = gtLastTodoId id
++                    , is_public = equalToBoolean True
++                }
++            )
++        )
++
++
++
++{-
++   Generates argument as below
++   ```
++    order_by : [
++      {
++        created_at: desc
 +      }
-+    ```
-+ -}
-+ 
-+ 
-+ newPublicTodoListQueryOptionalArgs : Int -> TodosOptionalArguments -> TodosOptionalArguments
-+ newPublicTodoListQueryOptionalArgs id optionalArgs =
-+     { optionalArgs | where_ = newPublicTodosWhere id, order_by = orderByCreatedAt Desc }
-+ 
-+ 
-+ newTodoQuery : Int -> SelectionSet Todos RootQuery
-+ newTodoQuery id =
-+     Query.todos (newPublicTodoListQueryOptionalArgs id) todoListSelectionWithUser
-+ 
-+ 
-+ loadNewTodos : SelectionSet Todos RootQuery -> String -> Cmd Msg
-+ loadNewTodos q authToken =
-+     makeGraphQLQuery authToken q (RemoteData.fromResult >> FetchNewTodoDataSuccess)
-+ 
-+ 
-+ ltLastTodoId : Int -> OptionalArgument Integer_comparison_exp
-+ ltLastTodoId id =
-+     Present
-+         (buildInteger_comparison_exp
-+             (\args ->
-+                 { args
-+                     | lt_ = Present id
-+                 }
-+             )
-+         )
-+ 
-+ 
-+ oldPublicTodosWhere : Int -> OptionalArgument Todos_bool_exp
-+ oldPublicTodosWhere id =
-+     Present
-+         (buildTodos_bool_exp
-+             (\args ->
-+                 { args
-+                     | id = ltLastTodoId id
-+                     , is_public = equalToBoolean True
-+                 }
-+             )
-+         )
-+ 
-+ 
-+ oldPublicTodoListQueryOptionalArgs : Int -> TodosOptionalArguments -> TodosOptionalArguments
-+ oldPublicTodoListQueryOptionalArgs id optionalArgs =
-+     { optionalArgs | where_ = oldPublicTodosWhere id, order_by = orderByCreatedAt Desc, limit = OptionalArgument.Present 7 }
-+ 
-+ 
-+ oldTodoQuery : Int -> SelectionSet Todos RootQuery
-+ oldTodoQuery id =
-+     Query.todos (oldPublicTodoListQueryOptionalArgs id) todoListSelectionWithUser
-+ 
-+ 
-+ loadOldTodos : SelectionSet Todos RootQuery -> String -> Cmd Msg
-+ loadOldTodos q authToken =
-+     makeGraphQLQuery authToken q (RemoteData.fromResult >> FetchOldTodoDataSuccess)
++    ],
++     where_ : {
++       id: {
++         _gt: <id>
++       },
++       is_public: {
++         _eq: True
++       }
++     }
++   ```
++-}
++
++
++newPublicTodoListQueryOptionalArgs : Int -> TodosOptionalArguments -> TodosOptionalArguments
++newPublicTodoListQueryOptionalArgs id optionalArgs =
++    { optionalArgs | where_ = newPublicTodosWhere id, order_by = orderByCreatedAt Desc }
++
++
++newTodoQuery : Int -> SelectionSet Todos RootQuery
++newTodoQuery id =
++    Query.todos (newPublicTodoListQueryOptionalArgs id) todoListSelectionWithUser
++
++
++loadNewTodos : SelectionSet Todos RootQuery -> String -> Cmd Msg
++loadNewTodos q authToken =
++    makeGraphQLQuery authToken q (RemoteData.fromResult >> FetchNewTodoDataSuccess)
++
++
++ltLastTodoId : Int -> OptionalArgument Integer_comparison_exp
++ltLastTodoId id =
++    Present
++        (buildInteger_comparison_exp
++            (\args ->
++                { args
++                    | lt_ = Present id
++                }
++            )
++        )
++
++
++oldPublicTodosWhere : Int -> OptionalArgument Todos_bool_exp
++oldPublicTodosWhere id =
++    Present
++        (buildTodos_bool_exp
++            (\args ->
++                { args
++                    | id = ltLastTodoId id
++                    , is_public = equalToBoolean True
++                }
++            )
++        )
++
++
++oldPublicTodoListQueryOptionalArgs : Int -> TodosOptionalArguments -> TodosOptionalArguments
++oldPublicTodoListQueryOptionalArgs id optionalArgs =
++    { optionalArgs | where_ = oldPublicTodosWhere id, order_by = orderByCreatedAt Desc, limit = OptionalArgument.Present 7 }
++
++
++oldTodoQuery : Int -> SelectionSet Todos RootQuery
++oldTodoQuery id =
++    Query.todos (oldPublicTodoListQueryOptionalArgs id) todoListSelectionWithUser
++
++
++loadOldTodos : SelectionSet Todos RootQuery -> String -> Cmd Msg
++loadOldTodos q authToken =
++    makeGraphQLQuery authToken q (RemoteData.fromResult >> FetchOldTodoDataSuccess)
 
 
 ```
@@ -234,120 +234,35 @@ Lets add it to our update function to update the models appropriately
 
 ```
 
+### Update `loadLatestPublicTodo` and `loadOldPublicTodos`
 
-Let's populate initial state by fetching the existing list of todos in `componentDidMount()`
+Lets update our render functions to invoke relevant actions on click
 
-```javascript
-class _TodoPublicList extends Component {
-  constructor(props) {
-    ...
-  }
-
-  loadNew() {
-  }
-
-  loadOlder() {
-  }
-
-+  componentDidMount() {
-+    this.loadOlder();
-+  }
-
-   render() {
-     ...
-   }
-}
 ```
+loadLatestPublicTodo : Int -> Html Msg
+loadLatestPublicTodo count =
+    case count of
+        0 ->
+            nothing
 
-Update the `loadOlder` method to the following:
+        _ ->
+-           div [ class "loadMoreSection" ]
++           div [ class "loadMoreSection", onClick FetchNewPublicTodos ]
+                [ text ("New tasks have arrived! (" ++ String.fromInt count ++ ")")
+                ]
 
-```javascript
-  loadOlder() {
-+    const GET_OLD_PUBLIC_TODOS = gql`
-+      query getOldPublicTodos ($oldestTodoId: Int!) {
-+        todos (where: { is_public: { _eq: true}, id: {_lt: $oldestTodoId}}, limit: 7, order_by: { created_at: desc }) {
-+          id
-+          title
-+          created_at
-+          user {
-+            name
-+          }
-+        }
-+      }`;
-+
-+    this.client.query({
-+      query: GET_OLD_PUBLIC_TODOS,
-+      variables: {oldestTodoId: (this.oldestTodoId)}
-+    })
-+    .then(({data}) => {
-+      if (data.todos.length) {
-+        this.oldestTodoId = data.todos[data.todos.length - 1].id;
-+        this.setState({todos: [...this.state.todos, ...data.todos]});
-+      } else {
-+        this.setState({olderTodosAvailable: false});
-+      }
-+    })
-+    .catch(error => {
-+      console.error(error);
-+      this.setState({error: true});
-+    });
-  }
-```
 
-We are defining a query to fetch older public todos and making a `client.query` call to get the data from the database. Once we get the data, we update the `todos` state to re-render the UI with the available list of public todos.
+loadOldPublicTodos : Bool -> Html Msg
+loadOldPublicTodos oldTodosAvailable =
+    case oldTodosAvailable of
+        True ->
+-           div [ class "loadMoreSection" ]
++           div [ class "loadMoreSection", onClick FetchOldPublicTodos  ]
+                [ text "Load older tasks"
+                ]
 
-Try adding a new todo in the public feed and notice that it will not show up on the UI. Now refresh the page to see the added todo.
-
-This happens because we haven't yet implemented a way to show the newly added todo to the feed.
-
-Let's handle that in `componentDidUpdate()` lifecycle method
-
-```javascript
-+ componentDidUpdate(prevProps) {
-+  // Do we have a new todo available?
-+  if (this.props.latestTodo.id > this.newestTodoId) {
-+    this.newestTodoId = this.props.latestTodo.id;
-+    this.setState({newTodosCount: this.state.newTodosCount + 1});
-+  }
-+ }
-
-  componentDidMount() {
-    ...
-  }
-```
-
-Now try adding a new todo to the public feed and you will see the notification appearing saying that a new task has arrived.
-
-Great! We still have one functionality left. When a new task arrives on the public feed and when the user clicks on the New tasks section, we should make a query to re-fetch the todos that are not present on our current public feed.
-
-Update `loadNew()` method with the following code
-
-```javascript
-  loadNew() {
-+   const GET_NEW_PUBLIC_TODOS = gql`
-+     query getNewPublicTodos ($latestVisibleId: Int!) {
-+       todos(where: { is_public: { _eq: true}, id: {_gt: $latestVisibleId}}, order_by: { created_at: desc }) {
-+         id
-+         title
-+         created_at
-+         user {
-+           name
-+         }
-+       }
-+     }
-+   `;
-+
-+   this.client.query({
-+     query: GET_NEW_PUBLIC_TODOS,
-+     variables: {latestVisibleId: this.state.todos[0].id}
-+   })
-+   .then(({data}) => {
-+     this.newestTodoId = data.todos[0].id;
-+     this.setState({todos: [...data.todos, ...this.state.todos], newTodosCount: 0});
-+   })
-+   .catch(error => {
-+     console.error(error);
-+     this.setState({error: true});
-+   });
-  }
+        False ->
+            div [ class "loadMoreSection" ]
+                [ text "No more public tasks!"
+                ]
 ```

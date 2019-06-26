@@ -1,6 +1,6 @@
 ---
 title: "Tutorial & boilerplate setup"
-metaTitle: "Todo app elm boilerplate setup | GraphQL Elm Apollo Tutorial"
+metaTitle: "Todo app elm boilerplate setup | GraphQL Elm Tutorial"
 metaDescription: "The GraphQL backend is already ready. The task is to convert the static UI into a working realtime app in Elm"
 ---
 
@@ -9,7 +9,7 @@ Our task will be to convert the "static" UI into a working realtime app.
 
 ### Download and run the boilerplate
 
-1. Download the boilerplate from https://learn.hasura.io/graphql/elm/boilerplate.zip
+1. Download the boilerplate from https://storage.googleapis.com/graphql-engine-cdn.hasura.io/learn-hasura/boilerplates/elm/elm-boilerplate.zip
 2. Unzip and make sure you're in the `app-boilerplate` directory
 3. Install dependencies and run the "static" app
     - `npm install`
@@ -22,7 +22,7 @@ This is what you should see after the steps above:
 
 ### Load GraphiQL to play with your GraphQL APIs
 
-1. Head to https://learn.hasura.io/graphql/graphiql?tutorial=elm
+1. Head to https://learn.hasura.io/graphql/graphiql?tutorial=react-native
 2. Log in (so that you can test the GraphQL APIs with a valid user token)
 
 This is what you should see after the steps above:

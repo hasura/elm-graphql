@@ -1,6 +1,6 @@
 ---
 title: "Set up a GraphQL client with Apollo"
-metaTitle: "Apollo Client GraphQL Setup | GraphQL Elm Apollo Tutorial"
+metaTitle: "Apollo Client GraphQL Setup | GraphQL Elm Tutorial"
 metaDescription: "You will learn how to configure Apollo Client in Elm by installing dependencies like react-apollo, apollo-client, apollo-link-http, apollo-cache-inmemory"
 ---
 
@@ -8,7 +8,7 @@ import GithubLink from "../src/GithubLink.js";
 
 Elm-graphql doesn't have a native websockets client. The only option available as of now is to use apollo client on the javascript side to make a GraphQL subscription query. We will get into how we can achieve it a little later. 
 
-Lets configure ApolloClient
+Lets configure our ApolloClient
 
 ### Elm Apollo Installation
 Let's get started by installing apollo client & peer graphql dependencies:
@@ -96,4 +96,4 @@ We are creating an `HttpLink` and `wsLink` to connect ApolloClient with the Grap
 
 At the end, we instantiate ApolloClient by passing in our link and a new instance of `InMemoryCache` (recommended caching solution). We are wrapping all of this in a function which will return the client.
 
-We are going to make use of this function subscriptions.
+We are going to make use of this function to initiate GraphQL subscriptions.

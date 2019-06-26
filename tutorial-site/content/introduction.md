@@ -1,7 +1,7 @@
 ---
 title: "Course introduction"
-metaTitle: "Course Introduction | GraphQL Elm Apollo Tutorial"
-metaDescription: "A powerful and concise tutorial that will introduce you to GraphQL and integrating GraphQL into your Elm app with Apollo, in the shortest amount of time possible."
+metaTitle: "Course Introduction | GraphQL Elm Tutorial"
+metaDescription: "A powerful and concise tutorial that will introduce you to GraphQL and integrating GraphQL into your Elm app, in the shortest amount of time possible."
 ---
 
 GraphQL is becoming the new way to use APIs in modern web and mobile apps.

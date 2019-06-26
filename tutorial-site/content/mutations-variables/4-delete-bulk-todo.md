@@ -26,6 +26,8 @@ We will construct a GraphQL Mutation to update a private todo and integrate it w
 
 ### Construct GraphQL Mutation
 
+We will be constructing a GraphQL mutation as above
+
 ```
 deleteSingleTodoItem : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
 deleteSingleTodoItem mutation authToken =
@@ -34,45 +36,45 @@ deleteSingleTodoItem mutation authToken =
         mutation
         (RemoteData.fromResult >> TodoDeleted)
 
-+ deleteAllCompletedTodo : SelectionSet (Maybe MutationResponse) RootMutation
-+ deleteAllCompletedTodo =
-+     Mutation.delete_todos (setTodoListDeleteAllCompletedWhere True) mutationResponseSelection
-+ 
-+ 
-+ setTodoListValueForTodoStatus : Bool -> Boolean_comparison_exp
-+ setTodoListValueForTodoStatus status =
-+     buildBoolean_comparison_exp
-+         (\args ->
-+             { args
-+                 | eq_ = Present status
-+             }
-+         )
-+ 
-+ 
-+ setTodoListDeleteAllCompletedWhere : Bool -> DeleteTodosRequiredArguments
-+ setTodoListDeleteAllCompletedWhere status =
-+     DeleteTodosRequiredArguments
-+         (buildTodos_bool_exp
-+             (\args ->
-+                 { args
-+                     | is_completed = Present (setTodoListValueForTodoStatus status)
-+                 }
-+             )
-+         )
-+ 
-+ 
-+ delAllResponseSelection : SelectionSet MutationResponse Hasura.Object.Todos_mutation_response
-+ delAllResponseSelection =
-+     SelectionSet.map MutationResponse
-+         TodosMutation.affected_rows
-+ 
-+ 
-+ deleteAllCompletedItems : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
-+ deleteAllCompletedItems mutation authToken =
-+     makeGraphQLMutation
-+         authToken
-+         mutation
-+         (RemoteData.fromResult >> AllCompletedItemsDeleted)
++deleteAllCompletedTodo : SelectionSet (Maybe MutationResponse) RootMutation
++deleteAllCompletedTodo =
++    Mutation.delete_todos (setTodoListDeleteAllCompletedWhere True) mutationResponseSelection
++
++
++setTodoListValueForTodoStatus : Bool -> Boolean_comparison_exp
++setTodoListValueForTodoStatus status =
++    buildBoolean_comparison_exp
++        (\args ->
++            { args
++                | eq_ = Present status
++            }
++        )
++
++
++setTodoListDeleteAllCompletedWhere : Bool -> DeleteTodosRequiredArguments
++setTodoListDeleteAllCompletedWhere status =
++    DeleteTodosRequiredArguments
++        (buildTodos_bool_exp
++            (\args ->
++                { args
++                    | is_completed = Present (setTodoListValueForTodoStatus status)
++                }
++            )
++        )
++
++
++delAllResponseSelection : SelectionSet MutationResponse Hasura.Object.Todos_mutation_response
++delAllResponseSelection =
++    SelectionSet.map MutationResponse
++        TodosMutation.affected_rows
++
++
++deleteAllCompletedItems : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
++deleteAllCompletedItems mutation authToken =
++    makeGraphQLMutation
++        authToken
++        mutation
++        (RemoteData.fromResult >> AllCompletedItemsDeleted)
 
 ```
 
@@ -85,8 +87,8 @@ Lets add new data types required to perform this operation
 type alias DeleteTodo =
     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
 
-+ type alias AllDeleted =
-+     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
++type alias AllDeleted =
++    RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
 
 
 ```

@@ -1,6 +1,6 @@
 ---
 title: "Fetch public todos - subscription"
-metaTitle: "Fetch public todos using Subscription | GraphQL Elm Apollo Tutorial"
+metaTitle: "Fetch public todos using Subscription | GraphQL Elm Tutorial"
 metaDescription: "You will learn how to make use of GraphQL Subscriptions to get notified whenever a new todo comes in React app"
 ---
 
@@ -13,10 +13,16 @@ Open `src/Main.elm` and add the following code:
 <GithubLink link="https://github.com/hasura/graphql-engine/blob/master/community/learn/graphql-tutorials/tutorials/elm/app-final/src/Main.elm" text="src/Main.elm" />
 
 ```
-port createSubscriptionToPublicTodos : ( String, String ) -> Cmd msg
 
-port gotRecentPublicTodoItem : (Json.Decode.Value -> msg) -> Sub msg
+port createSubscriptionToOnlineUsers : ( String, String ) -> Cmd msg
+port gotOnlineUsers : (Json.Decode.Value -> msg) -> Sub msg
+
++port createSubscriptionToPublicTodos : ( String, String ) -> Cmd msg
++
++port gotRecentPublicTodoItem : (Json.Decode.Value -> msg) -> Sub msg
 ```
+
+We are creating two more ports to query latest public todo.
 
 
 ### Construct GraphQL Subscription
@@ -29,72 +35,72 @@ onlineUsersSelection =
         (OnlineUser.user selectUser)
 
 
-+ publicTodoListSubscriptionOptionalArgument : TodosOptionalArguments -> TodosOptionalArguments
-+ publicTodoListSubscriptionOptionalArgument optionalArgs =
-+     { optionalArgs | where_ = whereIsPublic True, order_by = orderByCreatedAt Desc, limit = OptionalArgument.Present 1 }
-+ 
-+ 
-+ publicListSubscription : SelectionSet Todos RootSubscription
-+ publicListSubscription =
-+     Subscription.todos publicTodoListSubscriptionOptionalArgument todoListSelection
++publicTodoListSubscriptionOptionalArgument : TodosOptionalArguments -> TodosOptionalArguments
++publicTodoListSubscriptionOptionalArgument optionalArgs =
++    { optionalArgs | where_ = whereIsPublic True, order_by = orderByCreatedAt Desc, limit = OptionalArgument.Present 1 }
++
++
++publicListSubscription : SelectionSet Todos RootSubscription
++publicListSubscription =
++    Subscription.todos publicTodoListSubscriptionOptionalArgument todoListSelection
 
 
-+ publicTodoListQueryLimit : Int -> OptionalArgument Int
-+ publicTodoListQueryLimit limit =
-+     Present limit
-+ 
-+ 
-+ lteLastTodoId : Int -> OptionalArgument Integer_comparison_exp
-+ lteLastTodoId id =
-+     Present
-+         (buildInteger_comparison_exp
-+             (\args ->
-+                 { args
-+                     | lte_ = Present id
-+                 }
-+             )
-+         )
-+ 
-+ 
-+ publicTodoListOffsetWhere : Int -> OptionalArgument Todos_bool_exp
-+ publicTodoListOffsetWhere id =
-+     Present
-+         (buildTodos_bool_exp
-+             (\args ->
-+                 { args
-+                     | id = lteLastTodoId id
-+                     , is_public = equalToBoolean True
-+                 }
-+             )
-+         )
-+ 
-+ 
-+ publicTodoListQueryOptionalArgs : Int -> Int -> TodosOptionalArguments -> TodosOptionalArguments
-+ publicTodoListQueryOptionalArgs id limit optionalArgs =
-+     { optionalArgs | where_ = publicTodoListOffsetWhere id, order_by = orderByCreatedAt Desc, limit = publicTodoListQueryLimit limit }
-+ 
-+ 
-+ todoListSelectionWithUser : SelectionSet Todo Hasura.Object.Todos
-+ todoListSelectionWithUser =
-+     SelectionSet.map5 Todo
-+         Todos.id
-+         Todos.user_id
-+         Todos.is_completed
-+         Todos.title
-+         (Todos.user selectUser)
-+ 
-+ 
-+ loadPublicTodoList : Int -> SelectionSet Todos RootQuery
-+ loadPublicTodoList id =
-+     Query.todos (publicTodoListQueryOptionalArgs id 7) todoListSelectionWithUser
-+ 
-+ 
-+ makeRequest : SelectionSet Todos RootQuery -> String -> Cmd Msg
-+ makeRequest query authToken =
-+     makeGraphQLQuery
-+         authToken
-+         query
-+         (RemoteData.fromResult >> FetchPublicDataSuccess)
++publicTodoListQueryLimit : Int -> OptionalArgument Int
++publicTodoListQueryLimit limit =
++    Present limit
++
++
++lteLastTodoId : Int -> OptionalArgument Integer_comparison_exp
++lteLastTodoId id =
++    Present
++        (buildInteger_comparison_exp
++            (\args ->
++                { args
++                    | lte_ = Present id
++                }
++            )
++        )
++
++
++publicTodoListOffsetWhere : Int -> OptionalArgument Todos_bool_exp
++publicTodoListOffsetWhere id =
++    Present
++        (buildTodos_bool_exp
++            (\args ->
++                { args
++                    | id = lteLastTodoId id
++                    , is_public = equalToBoolean True
++                }
++            )
++        )
++
++
++publicTodoListQueryOptionalArgs : Int -> Int -> TodosOptionalArguments -> TodosOptionalArguments
++publicTodoListQueryOptionalArgs id limit optionalArgs =
++    { optionalArgs | where_ = publicTodoListOffsetWhere id, order_by = orderByCreatedAt Desc, limit = publicTodoListQueryLimit limit }
++
++
++todoListSelectionWithUser : SelectionSet Todo Hasura.Object.Todos
++todoListSelectionWithUser =
++    SelectionSet.map5 Todo
++        Todos.id
++        Todos.user_id
++        Todos.is_completed
++        Todos.title
++        (Todos.user selectUser)
++
++
++loadPublicTodoList : Int -> SelectionSet Todos RootQuery
++loadPublicTodoList id =
++    Query.todos (publicTodoListQueryOptionalArgs id 7) todoListSelectionWithUser
++
++
++makeRequest : SelectionSet Todos RootQuery -> String -> Cmd Msg
++makeRequest query authToken =
++    makeGraphQLQuery
++        authToken
++        query
++        (RemoteData.fromResult >> FetchPublicDataSuccess)
 
 ```
 
@@ -135,17 +141,9 @@ subscriptions model =
                 , Time.every 30000 Tick
                 ]
 
-getInitialEvent : String -> Cmd Msg
-getInitialEvent authToken =
-    Cmd.batch
-        [ fetchPrivateTodos authToken
-+       , createSubscriptionToPublicTodos ( publicListSubscription |> Graphql.Document.serializeSubscription, authToken )
-        , createSubscriptionToOnlineUsers ( onlineUsersSubscription |> Graphql.Document.serializeSubscription, authToken )
-        ]
-
-updatePublicTodoData : (PublicTodoData -> PublicTodoData) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
-updatePublicTodoData transform model cmd =
-    ( { model | publicTodoInfo = transform model.publicTodoInfo }, cmd )
++updatePublicTodoData : (PublicTodoData -> PublicTodoData) -> Model -> Cmd Msg -> ( Model, Cmd Msg )
++updatePublicTodoData transform model cmd =
++    ( { model | publicTodoInfo = transform model.publicTodoInfo }, cmd )
 
 ```
 
