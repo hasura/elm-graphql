@@ -56,13 +56,10 @@ const getClient = (token) => {
   return client;
 };
 
-/* */
-
 document.addEventListener("DOMContentLoaded", function() {
   var app = Elm.Main.init({
     node: document.getElementById("root")
   });
-
   app.ports.createSubscriptionToPublicTodos.subscribe(function(data) {
     /* Initiate subscription request */
     var [ data, authToken ] = data;
@@ -82,7 +79,6 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     }
   });
-
   app.ports.createSubscriptionToOnlineUsers.subscribe(function(data) {
     /* Initiate subscription request */
     var [ data, authToken ] = data;

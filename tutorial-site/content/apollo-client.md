@@ -1,106 +1,99 @@
 ---
 title: "Set up a GraphQL client with Apollo"
-metaTitle: "Apollo Client GraphQL Setup | GraphQL React Apollo Tutorial"
-metaDescription: "You will learn how to configure Apollo Client in React by installing dependencies like react-apollo, apollo-client, apollo-link-http, apollo-cache-inmemory"
+metaTitle: "Apollo Client GraphQL Setup | GraphQL Elm Apollo Tutorial"
+metaDescription: "You will learn how to configure Apollo Client in Elm by installing dependencies like react-apollo, apollo-client, apollo-link-http, apollo-cache-inmemory"
 ---
 
 import GithubLink from "../src/GithubLink.js";
-import YoutubeEmbed from "../src/YoutubeEmbed.js";
 
-<YoutubeEmbed link="https://www.youtube.com/embed/m3IAzTwoUUM" />
+Elm-graphql doesn't have a native websockets client. The only option available as of now is to use apollo client on the javascript side to make a GraphQL subscription query. We will get into how we can achieve it a little later. 
 
-Apollo gives a neat abstraction layer and an interface to your GraphQL server. You don't need to worry about constructing your queries with request body, headers and options, that you might have done with `axios` or `fetch` say. You can directly write queries and mutations in GraphQL and they will automatically be sent to your server via your apollo client instance.
+Lets configure ApolloClient
 
-### React Apollo Installation
+### Elm Apollo Installation
 Let's get started by installing apollo client & peer graphql dependencies:
 
 ```bash
-$ npm install --save apollo-client react-apollo apollo-cache-inmemory apollo-link-http graphql graphql-tag
+$ npm install --save apollo-client apollo-link-http apollo-cache-inmemory apollo-link-http apollo-link-ws subscriptions-transport-ws graphql graphql-tag
 ```
 
 ### Create Apollo Client Instance
-Open `src/components/App.js` and add the following imports at the top:
+Open `src/index.js` and add the following imports at the top:
 
-<GithubLink link="https://github.com/hasura/graphql-engine/blob/master/community/learn/graphql-tutorials/tutorials/react-apollo/app-final/src/components/App.js" text="src/components/App.js" />
+<GithubLink link="https://github.com/hasura/graphql-engine/blob/master/community/learn/graphql-tutorials/tutorials/elm/app-final/src/index.js" text="src/index.js" />
 
 ```javascript
-import React from 'react';
+import './main.css';
+import { Elm } from './Main.elm';
 
-import Header from './Header';
-import TodoPrivateWrapper from './Todo/TodoPrivateWrapper';
-import TodoPublicWrapper from './Todo/TodoPublicWrapper';
-import OnlineUsersWrapper from './OnlineUsers/OnlineUsersWrapper';
-
-+ import ApolloClient from 'apollo-client';
-+ import { InMemoryCache } from 'apollo-cache-inmemory';
+/* */
++ import ApolloClient from "apollo-client";
++ import { split } from 'apollo-link';
 + import { HttpLink } from 'apollo-link-http';
-+ import { ApolloProvider } from 'react-apollo';
-
-const App = ({auth}) => {
-  return (
-    <div>
-      <Header logoutHandler={auth.logout} />
-      <div className="container-fluid p-left-right-0">
-        <div className="col-xs-12 col-md-9 p-left-right-0">
-          <div className="col-xs-12 col-md-6 sliderMenu p-30">
-            <TodoPrivateWrapper />
-          </div>
-          <div className="col-xs-12 col-md-6 sliderMenu p-30 bg-gray border-right">
-            <TodoPublicWrapper />
-          </div>
-        </div>
-        <div className="col-xs-12 col-md-3 p-left-right-0">
-          <div className="col-xs-12 col-md-12 sliderMenu p-30 bg-gray">
-            <OnlineUsersWrapper />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default App;
-```
-
-These are the required apollo dependencies to get started. Now let's define a function which will return apollo client with httplink and cache.
-
-```javascript
-import ApolloClient from 'apollo-client';
-import { InMemoryCache } from 'apollo-cache-inmemory';
-import { HttpLink } from 'apollo-link-http';
-import { ApolloProvider } from 'react-apollo';
-
-+ const createApolloClient = (authToken) => {
-+  return new ApolloClient({
-+    link: new HttpLink({
-+      uri: 'https://learn.hasura.io/graphql',
-+      headers: {
-+        Authorization: `Bearer ${authToken}`
-+      }
-+    }),
-+    cache: new InMemoryCache(),
-+  });
++ import { WebSocketLink } from 'apollo-link-ws';
++ import { getMainDefinition } from 'apollo-utilities';
++ import { InMemoryCache } from "apollo-cache-inmemory";
++ 
++ import gql from 'graphql-tag'
++ 
++ // Replace it with your graphql url
++ const GRAPHQL_URI = 'learn.hasura.io/graphql';
++ 
++ const getClient = (token) => {
++   // Create an http link:
++   const httpLink = new HttpLink({
++     uri: `https://${GRAPHQL_URI}`
++   });
++ 
++   // Create a WebSocket link:
++   const wsLink = new WebSocketLink({
++     uri: `wss://${GRAPHQL_URI}`,
++     options: {
++       reconnect: true
++       , connectionParams: {
++         headers: {
++           Authorization: `Bearer ${ token }`
++         }
++       }
++     }
++   });
++ 
++   // using the ability to split links, you can send data to each link
++   // depending on what kind of operation is being sent
++   const link = split(
++     // split based on operation type
++     ({ query }) => {
++       const definition = getMainDefinition(query);
++       return (
++         definition.kind === 'OperationDefinition' &&
++         definition.operation === 'subscription'
++       );
++     },
++     wsLink,
++     httpLink,
++   );
++   const client = new ApolloClient({
++     link: link,
++     cache: new InMemoryCache({
++       addTypename: true
++     })
++   });
++   return client;
 + };
-```
-Create the apollo client inside `App` and pass the client prop to `<ApolloProvider>` component.
 
-```javascript
-const App = ({auth}) => {
-+  const client = createApolloClient(auth.idToken);
-   return (
-+    <ApolloProvider client={client}>
-       <div>
-       </div>
-+    </ApolloProvider>
-   );
-};
+document.addEventListener("DOMContentLoaded", function() {
+  var app = Elm.Main.init({
+    node: document.getElementById("root")
+  });
+})
+
 ```
 
 Let's try to understand what is happening here. 
 
 ### HttpLink and InMemoryCache
-We are creating an `HttpLink` to connect ApolloClient with the GraphQL server. As you know already, our GraphQL server is running at [https://learn.hasura.io/graphql](https://learn.hasura.io/graphql)
+We are creating an `HttpLink` and `wsLink` to connect ApolloClient with the GraphQL server. As you know already, our GraphQL server is running at [https://learn.hasura.io/graphql](https://learn.hasura.io/graphql)
 
-At the end, we instantiate ApolloClient by passing in our HttpLink and a new instance of `InMemoryCache` (recommended caching solution). We are wrapping all of this in a function which will return the client.
+At the end, we instantiate ApolloClient by passing in our link and a new instance of `InMemoryCache` (recommended caching solution). We are wrapping all of this in a function which will return the client.
 
-We are going to make use of this function inside `App` component.
+We are going to make use of this function subscriptions.

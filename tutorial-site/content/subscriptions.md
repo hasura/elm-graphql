@@ -1,13 +1,10 @@
 ---
 title: "Subscriptions to show online users"
-metaTitle: "Update last seen of user with Mutation | GraphQL React Apollo Tutorial"
-metaDescription: "GraphQL Mutation to update last seen of user to make them available online. Use setInterval to trigger mutation every few seconds "
+metaTitle: "Update last seen of user with Mutation | GraphQL Elm Apollo Tutorial"
+metaDescription: "GraphQL Mutation to update last seen of user to make them available online."
 ---
 
 import GithubLink from "../src/GithubLink.js";
-import YoutubeEmbed from "../src/YoutubeEmbed.js";
-
-<YoutubeEmbed link="https://www.youtube.com/embed/Zegh4VJqrHM" />
 
 We cruised through our GraphQL queries and mutations. We queried for todos, added a new todo, updated an existing todo, removed an existing todo.
 
@@ -28,77 +25,221 @@ We have to make this change to see yourself online first. Remember that you are 
 
 The goal is to update every few seconds from the client that you are online. Ideally you should do this after you have successfully authenticated with Auth0. So let's update some code to handle this. 
 
-Open `src/components/OnlineUsers/OnlineUsersWrapper.js` and add the following imports and set the client prop in the constructor
+Open `src/Main.elm` and configure the following ports
 
-<GithubLink link="https://github.com/hasura/graphql-engine/blob/master/community/learn/graphql-tutorials/tutorials/react-apollo/app-final/src/components/OnlineUsers/OnlineUsersWrapper.js" text="src/components/OnlineUsers/OnlineUsersWrapper.js" />
+<GithubLink link="https://github.com/hasura/graphql-engine/blob/master/community/learn/graphql-tutorials/tutorials/elm/app-final/src/Main.elm" text="src/Main.elm" />
 
-```javascript
-+ import gql from "graphql-tag";
-+ import {withApollo} from 'react-apollo';
-class OnlineUsersWrapper extends Component {
-- constructor() {
-+ constructor(props) {
--   super();
-+   super(props);
-+   this.client = props.client;
-
-    this.state = {
-      onlineUsers: [
-        { name: "someUser1" },
-        { name: "someUser2" }
-      ]
-    };
-  }
 ```
 
-Update the export by wrapping the OnlineUsersWrapper component with `withApollo`
+port createSubscriptionToOnlineUsers : ( String, String ) -> Cmd msg
 
-```javascript
-- export default OnlineUsersWrapper;
-+ export default withApollo(OnlineUsersWrapper);
+port gotOnlineUsers : (Json.Decode.Value -> msg) -> Sub msg
 ```
 
-In `componentDidMount`, we will create a `setInterval` to update the last_seen of the user every 30 seconds.
+What we have done here is we have created two ports - one to send information from elm and one to receive information from js.
 
-```javascript
-class OnlineUsersWrapper extends Component {
-  constructor(props) {
-    super(props);
-    this.client = props.client;
-  }
-+ componentDidMount() {
-+   // Every 30s, run a mutation to tell the backend that you're online
-+   this.onlineIndicator = setInterval(() => this.updateLastSeen(), 30000);
-+ }
+Lets setup a timer on the elm side which will invoke a function every 30 seconds. We can setup a timer using subscriptions. Here is how the setup will look like
+
+```
+
+-- Imports --
+import Iso8601
+import Time
+
+-- Subscriptions --
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+- 	Sub.none
++   case String.length model.authData.authToken of
++       0 ->
++           Sub.none
+
++       _ ->
++           Sub.batch
++               [ Time.every 30000 Tick
++               ]
+
+-- Msg --
+
+type Msg = 
+	{- Rest of the messages -}
++	| Tick Time.Posix
+
+update msg model =
+	case msg of
+		{- Rest -}
++   Tick newTime ->
++       let
++           currentIsoTime =
++               Iso8601.fromTime newTime
++
++           {-
++              Perform an action
++           -}
++       in
++       ( model, Cmd.none )
+
 ```
 
 Now let's write the definition of the `updateLastSeen`.
 
-```javascript
-class OnlineUsersWrapper extends Component {
-  constructor(props) {
-    super(props);
-    this.client = props.client;
-  }
-+  updateLastSeen() {
-+    // Use the apollo client to run a mutation to update the last_seen value
-+    const UPDATE_LASTSEEN_MUTATION=gql`
-+      mutation updateLastSeen ($now: timestamptz!) {
-+        update_users(where: {}, _set: {last_seen: $now}) {
-+          affected_rows
-+        }
-+      }`;
-+    this.client.mutate({
-+      mutation: UPDATE_LASTSEEN_MUTATION,
-+      variables: {now: (new Date()).toISOString()}
-+    });
-+  }
-  componentDidMount() {
-    // Every 30s, run a mutation to tell the backend that you're online
-    this.onlineIndicator = setInterval(() => this.updateLastSeen(), 30000);
-  }
+### Imports
+
+```
+import Hasura.InputObject
+    exposing
+        ( Boolean_comparison_exp
+        , Integer_comparison_exp
+        , Todos_bool_exp
+        , Todos_insert_input
+        , Todos_order_by
+        , Todos_set_input
++       , Users_set_input
+        , buildBoolean_comparison_exp
+        , buildInteger_comparison_exp
+        , buildTodos_bool_exp
+        , buildTodos_insert_input
+        , buildTodos_order_by
+        , buildTodos_set_input
++       , buildUsers_bool_exp
++       , buildUsers_set_input
+        )
+import Hasura.Mutation as Mutation
+    exposing
+        ( DeleteTodosRequiredArguments
+        , InsertTodosRequiredArguments
+        , UpdateTodosOptionalArguments
+        , UpdateTodosRequiredArguments
++       , UpdateUsersOptionalArguments
++       , UpdateUsersRequiredArguments
+        , insert_todos
+        )
++ import Hasura.Scalar as Timestamptz exposing (Timestamptz(..))
++ import Hasura.Object.Users_mutation_response as UsersMutation
 ```
 
-Again, we are making use of `client.mutate` to update the `users` table of the database.
+### Construct GraphQL Mutation
+
+```
+deleteAllCompletedItems : SelectionSet (Maybe MutationResponse) RootMutation -> String -> Cmd Msg
+deleteAllCompletedItems mutation authToken =
+    makeGraphQLMutation
+        authToken
+        mutation
+        (RemoteData.fromResult >> AllCompletedItemsDeleted)
+
++ updateUserSetArg : String -> Users_set_input
++ updateUserSetArg timestamp =
++     buildUsers_set_input
++         (\args ->
++             { args
++                 | last_seen = Present (Timestamptz timestamp)
++             }
++         )
++ 
++ 
++ updateLastSeenArgs : String -> UpdateUsersOptionalArguments -> UpdateUsersOptionalArguments
++ updateLastSeenArgs timestamp optionalArgs =
++     { optionalArgs
++         | set_ = Present (updateUserSetArg timestamp)
++     }
++ 
++ 
++ updateLastSeenWhere : UpdateUsersRequiredArguments
++ updateLastSeenWhere =
++     UpdateUsersRequiredArguments
++         (buildUsers_bool_exp (\args -> args))
++ 
++ 
++ selectionUpdateUserLastSeen : SelectionSet MutationResponse Hasura.Object.Users_mutation_response
++ selectionUpdateUserLastSeen =
++     SelectionSet.map MutationResponse
++         UsersMutation.affected_rows
++ 
++ 
++ updateUserLastSeen : String -> SelectionSet (Maybe MutationResponse) RootMutation
++ updateUserLastSeen currTime =
++     Mutation.update_users (updateLastSeenArgs currTime) updateLastSeenWhere selectionUpdateUserLastSeen
++ 
++ 
++ updateLastSeen : String -> SelectionSet (Maybe MutationResponse) RootMutation -> Cmd Msg
++ updateLastSeen authToken updateQuery =
++     makeGraphQLMutation
++         authToken
++         updateQuery
++         (RemoteData.fromResult >> UpdateLastSeen)
+
+
+```
+
+### Add Data Types
+
+Lets add new data types required to perform this operation
+
+```
+type alias AllDeleted =
+    RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
+
+
++ type alias UpdateLastSeenResponse =
++     RemoteData (Graphql.Http.Error (Maybe MutationResponse)) (Maybe MutationResponse)
+```
+
+### Add new Msg type
+
+Lets add `Msg` types required to perform this operation
+
+```
+type Msg
+    = EnteredEmail String
+    | EnteredPassword String
+    | EnteredUsername String
+    | MakeLoginRequest
+    | MakeSignupRequest
+    | ToggleAuthForm DisplayForm
+    | GotLoginResponse LoginResponseParser
+    | GotSignupResponse SignupResponseParser
+    | ClearAuthToken
+    | FetchPrivateDataSuccess TodoData
+    | InsertPrivateTodo
+    | UpdateNewTodo String
+    | InsertPrivateTodoResponse (GraphQLResponse MaybeMutationResponse)
+   	| MarkCompleted Int Bool
+   	| UpdateTodo UpdateTodoItemResponse
+    | DelTodo Int
+    | TodoDeleted DeleteTodo
+    | AllCompletedItemsDeleted AllDeleted
+    | DeleteAllCompletedItems
++   | Tick Time.Posix
++   | UpdateLastSeen UpdateLastSeenResponse
+```
+
+### Handle new Msg types in update
+
+```
+        AllCompletedItemsDeleted _ ->
+            ( model
+            , fetchPrivateTodos model.authData.authToken
+            )
+
++       Tick newTime ->
++           let
++               currentIsoTime =
++                   Iso8601.fromTime newTime
+
++               updateQuery =
++                   updateUserLastSeen currentIsoTime
++           in
++           ( model
++           , updateLastSeen model.authData.authToken updateQuery
++           )
+
++       UpdateLastSeen _ ->
++           ( model
++           , Cmd.none
++           )
+
+```
 
 Great! Now the metadata about whether the user is online will be available in the backend. Let's now do the integration to display realtime data of online users.

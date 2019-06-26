@@ -17,12 +17,13 @@ const config = {
 	},
 	"sidebar": {
 		"forcedNavOrder": [
-			"/introduction",
+			  "/introduction",
     		"/intro-to-graphql",
     		"/setup",
     		"/elm-graphql",
     		"/queries",
     		"/mutations-variables",
+        "/apollo-client",
     		"/subscriptions",
     		"/realtime-feed",
     		"/what-next"

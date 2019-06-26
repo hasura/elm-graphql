@@ -13,7 +13,7 @@
     "repl": "elm repl",
     "reactor": "elm reactor",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "generate-graph-types": "elm-graphql http://localhost:8080/v1alpha1/graphql --base Hasura --header 'x-hasura-admin-secret: secret123'"
+    "generate-elm-types": "elm-graphql https://learn.hasura.io/graphql --base Hasura"
   },
   "keywords": [
     "Elm",
@@ -24,12 +24,11 @@
   "author": "Karthik V",
   "license": "ISC",
   "dependencies": {
-    "@dillonkearns/elm-graphql": "^3.4.0",
-    "apollo-cache-inmemory": "^1.5.1",
-    "apollo-client": "^2.5.1",
-    "apollo-link-http": "^1.5.14",
-    "apollo-link-ws": "^1.0.17",
-    "graphql": "^14.2.1",
+    "apollo-cache-inmemory": "^1.6.2",
+    "apollo-client": "^2.6.3",
+    "apollo-link-http": "^1.5.15",
+    "apollo-link-ws": "^1.0.18",
+    "graphql": "^14.3.1",
     "graphql-tag": "^2.10.1",
     "subscriptions-transport-ws": "^0.9.16"
   },
@@ -39,6 +38,7 @@
     "@babel/plugin-transform-runtime": "7.3.4",
     "@babel/preset-env": "7.3.4",
     "@babel/runtime": "7.3.4",
+    "@dillonkearns/elm-graphql": "^3.6.2",
     "assets-webpack-plugin": "^3.5.1",
     "autoprefixer": "^8.0.0",
     "babel-loader": "8.0.4",
@@ -76,6 +76,6 @@
     "whatwg-fetch": "2.0.4"
   },
   "now": {
-    "alias": "https://build-cbstuzdlue.now.sh/"
+    "alias": ""
   }
 }

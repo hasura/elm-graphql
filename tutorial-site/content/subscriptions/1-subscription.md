@@ -1,54 +1,249 @@
 ---
 title: "Subscription"
-metaTitle: "Set up GraphQL Subscriptions using Apollo Client | GraphQL React Apollo Tutorial"
-metaDescription: "You will learn how to configure GraphQL Subscriptions using React Apollo Client by installing dependencies like apollo-link-ws, subscriptions-transport-ws. This will also have authorization token setup"
+metaTitle: "Set up GraphQL Subscriptions using Apollo Client | GraphQL Elm Apollo Tutorial"
+metaDescription: "You will learn how to configure GraphQL Subscriptions using Apollo Client by installing dependencies like apollo-link-ws, subscriptions-transport-ws. This will also have authorization token setup"
 ---
 
 import GithubLink from "../../src/GithubLink.js";
-import YoutubeEmbed from "../../src/YoutubeEmbed.js";
 
-<YoutubeEmbed link="https://www.youtube.com/embed/yZmVWeyoW_4" />
+Lets use the ports defined in the previous step to open a subscription client
 
-When we had initially set up Apollo, we used Apollo Boost to install the required dependencies. But subscriptions is an advanced use case which Apollo Boost does not support. So we have to install more dependencies to set up subscriptions.
 
-### React Apollo Subscriptions Setup
+### Imports
 
-```bash
-+ $ npm install apollo-link-ws subscriptions-transport-ws --save
+Open `src/Main.elm` and add the following code:
+
+<GithubLink link="https://github.com/hasura/graphql-engine/blob/master/community/learn/graphql-tutorials/tutorials/elm/app-final/src/Main.elm" text="src/Main.elm" />
+
+```
++ import Graphql.Document
+import Graphql.Http
+- import Graphql.Operation exposing (RootMutation, RootQuery)
++ import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
++ import Hasura.Object.Online_users as OnlineUser
 ```
 
-Now we need to update our `ApolloClient` instance to point to the subscription server.
+### Construct GraphQL Subscription
 
-Open `src/components/App.js` and update the following imports:
+```
+updateLastSeen : String -> SelectionSet (Maybe MutationResponse) RootMutation -> Cmd Msg
+updateLastSeen authToken updateQuery =
+    makeGraphQLMutation
+        authToken
+        updateQuery
+        (RemoteData.fromResult >> UpdateLastSeen)
 
-<GithubLink link="https://github.com/hasura/graphql-engine/blob/master/community/learn/graphql-tutorials/tutorials/react-apollo/app-final/src/components/App.js" text="src/components/App.js" />
++ onlineUsersSubscription : SelectionSet OnlineUsers RootSubscription
++ onlineUsersSubscription =
++     Subscription.online_users identity onlineUsersSelection
++ 
++ 
++ onlineUsersSelection : SelectionSet OnlineUser Hasura.Object.Online_users
++ onlineUsersSelection =
++     SelectionSet.map2 OnlineUser
++         OnlineUser.id
++         (OnlineUser.user selectUser)
 
-```javascript
-- import { HttpLink } from 'apollo-link-http';
-+ import { WebSocketLink } from 'apollo-link-ws';
 ```
 
-Update the createApolloClient function to integrate WebSocketLink.
+### Add/Update Data Types
 
-```javascript
-const createApolloClient = (authToken) => {
-  return new ApolloClient({
--   link: new HttpLink({
-+   link: new WebSocketLink({
--     uri: 'https://learn.hasura.io/graphql',
-+     uri: 'wss://learn.hasura.io/graphql',
-+     options: {
-+       reconnect: true,
-+       connectionParams: {
-          headers: {
-            Authorization: `Bearer ${authToken}`
-          }
-+       }
+```
+
+- type alias OnlineUser =
+-     { id : String
+-     , user : User
+-     }
+
++ type alias OnlineUser =
++     { id : Maybe String
++     , user : Maybe User
 +     }
-    }),
-    cache: new InMemoryCache(),
-  });
-};
+
+type alias OnlineUsersData =
+    RemoteData Json.Decode.Error OnlineUsers
+
+
+type alias Model =
+    { privateData : PrivateTodo
+    , publicTodoInsert : String
+    , publicTodoInfo : PublicTodoData
+-   , online_users : OnlineUsers
++   , online_users : OnlineUsersData
+    , authData : AuthData
+    , authForm : AuthForm
+    }
+
+
+- generateOnlineUser : Int -> OnlineUser
+- generateOnlineUser id =
+-     OnlineUser (String.fromInt id) (generateUser id)
+- 
+- 
+- getOnlineUsers : OnlineUsers
+- getOnlineUsers =
+-     List.map generateOnlineUser seedIds
+
+
+initialize : Model
+initialize =
+    { privateData = initializePrivateTodo
++   , online_users = getOnlineUsers
+-   , online_users = RemoteData.NotAsked
+    , publicTodoInsert = ""
+    , publicTodoInfo = PublicTodoData getPublicTodos 0 1 0 True
+    , authData = AuthData "" "" "" ""
+    , authForm = AuthForm Login False False ""
+    }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case String.length model.authData.authToken of
+        0 ->
+            Sub.none
+
+        _ ->
+            Sub.batch
++               [ gotOnlineUsers GotOnlineUsers
+                , Time.every 30000 Tick
+                ]
+
+
+getInitialEvent : String -> Cmd Msg
+getInitialEvent authToken =
+    Cmd.batch
+        [ fetchPrivateTodos authToken
++       , createSubscriptionToOnlineUsers ( onlineUsersSubscription |> Graphql.Document.serializeSubscription, authToken )
+        ]
+
+
+
 ```
 
-Note that we are replacing HttpLink with WebSocketLink and hence all GraphQL queries go through a single websocket connection.
+### Add new Msg type
+
+```
+type Msg
+    = EnteredEmail String
+    | EnteredPassword String
+    | EnteredUsername String
+    | MakeLoginRequest
+    | MakeSignupRequest
+    | ToggleAuthForm DisplayForm
+    | GotLoginResponse LoginResponseParser
+    | GotSignupResponse SignupResponseParser
+    | ClearAuthToken
+    | FetchPrivateDataSuccess TodoData
+    | InsertPrivateTodo
+    | UpdateNewTodo String
+    | InsertPrivateTodoResponse (GraphQLResponse MaybeMutationResponse)
+    | MarkCompleted Int Bool
+    | UpdateTodo UpdateTodoItemResponse
+    | DelTodo Int
+    | TodoDeleted DeleteTodo
+    | AllCompletedItemsDeleted AllDeleted
+    | DeleteAllCompletedItems
+    | Tick Time.Posix
+    | UpdateLastSeen UpdateLastSeenResponse
++   | GotOnlineUsers Json.Decode.Value
+```
+
+
+### Handle new Msg types in update
+
+```
+        UpdateLastSeen _ ->
+            ( model
+            , Cmd.none
+            )
+
++       GotOnlineUsers data ->
++           let
++               remoteData =
++                   Json.Decode.decodeValue (onlineUsersSubscription |> Graphql.Document.decoder) data |> RemoteData.fromResult
++           in
++           ( { model | online_users = remoteData }, Cmd.none )
+
+
+```
+
+### Update render functions
+
+```
+
+- generateOnlineUsersList : OnlineUsers -> List (Html msg)        
+- generateOnlineUsersList onlineUser =
+-     List.map viewOnlineUser onlineUser
+
++ generateOnlineUsersList : OnlineUsersData -> List (Html msg)
++ generateOnlineUsersList onlineUser =
++     case onlineUser of
++         RemoteData.Success d ->
++             List.map viewOnlineUser d
++ 
++         _ ->
++             [ text "" ]	
+
+
+- getOnlineUsersCount : OnlineUsers -> Int
+- getOnlineUsersCount onlineUsers =
+-     List.length onlineUsers
+
++ getOnlineUsersCount : OnlineUsersData -> Int
++ getOnlineUsersCount onlineUsers =
++     case onlineUsers of
++         RemoteData.Success data ->
++             List.length data
++ 
++         _ ->
++             0
+
+- viewOnlineUser : OnlineUser -> Html msg
+- viewOnlineUser onlineUser =
+-     viewUserName onlineUser.user.name
+
++ viewOnlineUser : OnlineUser -> Html msg
++ viewOnlineUser onlineUser =
++     case onlineUser.user of
++         Just user ->
++             viewUserName user.name
++ 
++         Nothing ->
++             text ""
+
+```
+
+Add port integration to index.js
+
+Open `src/index.js` and add the following code:
+
+<GithubLink link="https://github.com/hasura/graphql-engine/blob/master/community/learn/graphql-tutorials/tutorials/elm/app-final/src/index.js" text="src/index.js" />
+
+```
+document.addEventListener("DOMContentLoaded", function() {
+  var app = Elm.Main.init({
+    node: document.getElementById("root")
+  });
++ app.ports.createSubscriptionToOnlineUsers.subscribe(function(data) {
++   /* Initiate subscription request */
++   var [ data, authToken ] = data;
++   if (authToken.length > 0) {
++     getClient(authToken).subscribe({
++       query: gql`${data}`,
++       variables: {}
++     }).subscribe({
++       next(resp) {
++         app.ports.gotOnlineUsers.send(resp);
++       },
++       error(err) {
++         console.log('error is');
++         console.log(err);
++       }
++     });
++   }
++ });
+})
+```
+
+Awesome! You have completed basic implementations of a GraphQL Query, Mutation and Subscriptions. Easy isn't it?
