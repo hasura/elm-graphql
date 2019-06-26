@@ -1,3 +1,0 @@
-- args:
-    sql: ALTER TABLE ONLY "public"."todolist" ALTER COLUMN "user_id" SET DEFAULT 1;
-  type: run_sql
